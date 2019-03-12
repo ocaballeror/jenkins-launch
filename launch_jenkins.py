@@ -105,6 +105,8 @@ def wait_queue_item(location, auth, interval=5.):
     """
     Wait until the item starts building.
     """
+    if location[-1] != '/':
+        location += '/'
     queue = location + 'api/json'
     while True:
         response = requests.get(queue, auth=auth).json()
@@ -123,6 +125,8 @@ def wait_for_job(build_url, auth, interval=5.):
     """
     Wait until the build finishes.
     """
+    if build_url[-1] != '/':
+        build_url += '/'
     poll_url = build_url + 'api/json'
     while True:
         response = requests.get(poll_url, auth=auth).json()
@@ -138,6 +142,8 @@ def save_log_to_file(build_url, auth):
     """
     Save the build log to a file.
     """
+    if build_url[-1] != '/':
+        build_url += '/'
     job_name = build_url[build_url.find('/job/'):]
     job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
     log_file = job_name + '.txt'
