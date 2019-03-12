@@ -48,10 +48,11 @@ def show_progress(msg, duration):
     msg += '  '
     elapsed = 0
     while elapsed < duration:
-        spaces = os.get_terminal_size().columns - len(msg) - 3
-        spaces = max(spaces, 40)
-        out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
-        print(out, end='\r')
+        if sys.stdout.isatty():
+            spaces = os.get_terminal_size(0).columns - len(msg) - 3
+            spaces = max(spaces, 40)
+            out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
+            print(out, end='\r')
         time.sleep(0.1)
         elapsed += 0.1
 
