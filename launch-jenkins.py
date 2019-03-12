@@ -133,12 +133,13 @@ def wait_for_job(build_url, auth):
     return response
 
 
-def save_log_to_file(build_url, displayName, auth):
+def save_log_to_file(build_url, auth):
     """
     Save the build log to a file.
     """
-    filename = (job_name + displayName).replace('/', '_')
-    log_file = '/tmp/%s.txt' % filename
+    job_name = build_url[build_url.find('/job/'):]
+    job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
+    log_file = '/tmp/%s.txt' % job_name
     url = build_url + 'consoleText'
     console_log = requests.get(url, auth=auth, stream=True)
     console_log.raise_for_status()
