@@ -56,13 +56,34 @@ def show_progress(msg, duration):
         elapsed += 0.1
 
 
+def is_parametrized(url, auth):
+    """
+    Determine if the build is parametrized or not.
+    """
+    if url[-1] != '/':
+        url += '/'
+    url += 'api/json'
+    response = requests.get(url, auth=auth)
+    if response.status_code >= 400:
+        print(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
+        print(response.text, file=sys.stderr)
+        raise RuntimeError
+
+    response = response.json()
+    props = response.get('property', False)
+    if not props:
+        return False
+    return any('parameterDefinitions' in prop for prop in props)
+
+
 def launch_build(url, auth, params):
     """
     Submit job and return the queue item location.
     """
     if url[-1] != '/':
         url += '/'
-    url += 'buildWithParameters' if params else 'build'
+    has_params = bool(params) or is_parametrized(url, auth)
+    url += ('buildWithParameters' if has_params else 'build')
     print('Sending build request')
     response = requests.post(url, params=params, auth=auth)
     location = response.headers['Location']
