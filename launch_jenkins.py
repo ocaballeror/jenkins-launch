@@ -21,10 +21,13 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Launch a Jenkins job and wait for it to finish'
     )
-    parser.add_argument('-u', '--user', help='Username', type=str)
-    parser.add_argument('-t', '--token', help='User token', type=str)
+    parser.add_argument('-u', '--user', help='Username', type=str,
+        required=True)
+    parser.add_argument('-t', '--token', help='User token', type=str,
+        required=True)
     parser.add_argument(
-        '-j', '--job', help='The full url of the job to launch', type=str
+        '-j', '--job', help='The full url of the job to launch', type=str,
+        required=True
     )
     parser.add_argument(
         'params',
