@@ -101,7 +101,7 @@ def launch_build(url, auth, params):
     return location
 
 
-def wait_queue_item(location, auth):
+def wait_queue_item(location, auth, interval=5.):
     """
     Wait until the item starts building.
     """
@@ -114,12 +114,12 @@ def wait_queue_item(location, auth):
         if response.get('executable', False):
             build_url = response['executable']['url']
             break
-        show_progress('Job queued', 5)
+        show_progress('Job queued', interval)
     print('')
     return build_url
 
 
-def wait_for_job(build_url, auth):
+def wait_for_job(build_url, auth, interval=5.):
     """
     Wait until the build finishes.
     """
@@ -127,7 +127,7 @@ def wait_for_job(build_url, auth):
     while True:
         response = requests.get(poll_url, auth=auth).json()
         msg = 'Build %s in progress' % response['displayName']
-        show_progress(msg, 5)
+        show_progress(msg, interval)
         if response.get('result', False):
             print('\nThe job ended in', response['result'])
             break
