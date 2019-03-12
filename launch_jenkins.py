@@ -77,7 +77,7 @@ def is_parametrized(url, auth):
     return any('parameterDefinitions' in prop for prop in props)
 
 
-def launch_build(url, auth, params):
+def launch_build(url, auth, params=None):
     """
     Submit job and return the queue item location.
     """
