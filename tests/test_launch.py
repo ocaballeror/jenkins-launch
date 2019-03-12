@@ -84,7 +84,7 @@ def test_launch_error_no_queue(requests_mock):
 
 def test_wait_queue_item(requests_mock):
     def set_finished():
-        time.sleep(6)
+        time.sleep(.5)
         resp = {'executable': {'url': 'some url'}}
         resp = json.dumps(resp)
         requests_mock.get(url + '/api/json', text=resp)
@@ -93,14 +93,14 @@ def test_wait_queue_item(requests_mock):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    wait_queue_item(url, g_auth)
-    assert time.time() - t0 >= 10
+    wait_queue_item(url, g_auth, .2)
+    assert time.time() - t0 >= .5
 
 
 def test_wait_for_job(requests_mock):
     def set_finished():
         print('setting fisniehd')
-        time.sleep(6)
+        time.sleep(.5)
         print('setting fisniehd pt2')
         resp = {'result': 'success', 'displayName': 'name'}
         resp = json.dumps(resp)
@@ -111,5 +111,5 @@ def test_wait_for_job(requests_mock):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    wait_for_job(url, g_auth)
-    assert time.time() - t0 >= 10
+    wait_for_job(url, g_auth, .2)
+    assert time.time() - t0 >= .5
