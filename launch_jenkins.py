@@ -45,10 +45,14 @@ def show_progress(msg, duration):
     other message to stdout.
     """
     bar = cycle(['|', '/', '-', '\\'])
+    progress = (sys.stdout.isatty() and sys.platform != 'win32')
+    if not progress:
+        print(msg + '...')
+
     msg += '  '
     elapsed = 0
     while elapsed < duration:
-        if sys.stdout.isatty():
+        if progress:
             spaces = os.get_terminal_size(0).columns - len(msg) - 3
             spaces = max(spaces, 40)
             out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
