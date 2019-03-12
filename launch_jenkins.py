@@ -139,7 +139,7 @@ def save_log_to_file(build_url, auth):
     """
     job_name = build_url[build_url.find('/job/'):]
     job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
-    log_file = '/tmp/%s.txt' % job_name
+    log_file = job_name + '.txt'
     url = build_url + 'consoleText'
     console_log = requests.get(url, auth=auth, stream=True)
     console_log.raise_for_status()
