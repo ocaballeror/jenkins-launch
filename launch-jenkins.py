@@ -1,3 +1,7 @@
+"""
+Launch a jenkins job and wait for it to finish.
+"""
+import argparse
 import json
 import sys
 import time
@@ -7,15 +11,30 @@ from itertools import cycle
 import requests
 
 
-hostname = ''
-job_name = ''
+def parse_args():
+    """
+    Parse command line arguments and return a tuple with the relevant
+    parameters. The tuple will be of type (url, auth, params), with the full
+    url to launch the job, the authentication tuple for the requests package
+    and the build parameters for the job, if any.
+    """
+    parser = argparse.ArgumentParser(
+        description='Launch a Jenkins job and wait for it to finish'
+    )
+    parser.add_argument('-u', '--user', help='Username', type=str)
+    parser.add_argument('-t', '--token', help='User token', type=str)
+    parser.add_argument(
+        '-j', '--job', help='The full url of the job to launch', type=str
+    )
+    parser.add_argument(
+        'params',
+        help='(Optional) A list of parameters in the form key=value',
+        nargs='*',
+    )
+    args = parser.parse_args()
 
-username = ''
-pwd = ''
-auth = (username, pwd)
-
-build = '/build' if len(sys.argv) == 1 else '/buildWithParameters'
-actual_jobname = '/job/'.join(('/' + job_name).split('/'))
+    params = {k: v for k, v in map(lambda f: f.split('='), args.params)}
+    return (args.job, (args.user, args.token), params)
 
 
 def show_progress(msg, duration):
@@ -37,23 +56,23 @@ def show_progress(msg, duration):
         elapsed += 0.1
 
 
-def launch_build():
+def launch_build(url, auth, params):
     """
     Submit job and return the queue item location.
     """
-    url = hostname + actual_jobname + build
+    if url[-1] != '/':
+        url += '/'
+    url += 'buildWithParameters' if params else 'build'
     print('Sending build request')
-    params = {k: v for k, v in map(lambda f: f.split('='), sys.argv[1:])}
-    print(params)
     response = requests.post(url, params=params, auth=auth)
     location = response.headers['Location']
 
-    assert 'queue' in location, \
+    assert ('queue' in location), \
         'Err: Something went wrong with the Jenkins API'
     return location
 
 
-def wait_queue_item(location):
+def wait_queue_item(location, auth):
     """
     Wait until the item starts building.
     """
@@ -71,7 +90,7 @@ def wait_queue_item(location):
     return build_url
 
 
-def wait_for_job(build_url):
+def wait_for_job(build_url, auth):
     """
     Wait until the build finishes.
     """
@@ -86,7 +105,7 @@ def wait_for_job(build_url):
     return response
 
 
-def save_log_to_file(build_url, displayName):
+def save_log_to_file(build_url, displayName, auth):
     """
     Save the build log to a file.
     """
@@ -102,7 +121,9 @@ def save_log_to_file(build_url, displayName):
 
 
 if __name__ == '__main__':
-    g_location = launch_build()
-    g_build_url = wait_queue_item(g_location)
-    g_response = wait_for_job(g_build_url)
-    save_log_to_file(g_build_url, g_response['displayName'])
+    launch_params = parse_args()
+    g_auth = launch_params[1]
+    g_location = launch_build(*launch_params)
+    g_build_url = wait_queue_item(g_location, g_auth)
+    g_response = wait_for_job(g_build_url, g_auth)
+    save_log_to_file(g_build_url, g_auth)
