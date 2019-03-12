@@ -21,13 +21,18 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Launch a Jenkins job and wait for it to finish'
     )
-    parser.add_argument('-u', '--user', help='Username', type=str,
-        required=True)
-    parser.add_argument('-t', '--token', help='User token', type=str,
-        required=True)
     parser.add_argument(
-        '-j', '--job', help='The full url of the job to launch', type=str,
-        required=True
+        '-u', '--user', help='Username', type=str, required=True
+    )
+    parser.add_argument(
+        '-t', '--token', help='User token', type=str, required=True
+    )
+    parser.add_argument(
+        '-j',
+        '--job',
+        help='The full url of the job to launch',
+        type=str,
+        required=True,
     )
     parser.add_argument(
         'params',
@@ -48,7 +53,7 @@ def show_progress(msg, duration):
     other message to stdout.
     """
     bar = cycle(['|', '/', '-', '\\'])
-    progress = (sys.stdout.isatty() and sys.platform != 'win32')
+    progress = sys.stdout.isatty() and sys.platform != 'win32'
     if not progress:
         print(msg + '...')
 
@@ -91,7 +96,7 @@ def launch_build(url, auth, params=None):
     if url[-1] != '/':
         url += '/'
     has_params = bool(params) or is_parametrized(url, auth)
-    url += ('buildWithParameters' if has_params else 'build')
+    url += 'buildWithParameters' if has_params else 'build'
     print('Sending build request')
     response = requests.post(url, params=params, auth=auth)
     if response.status_code >= 400:
@@ -99,16 +104,18 @@ def launch_build(url, auth, params=None):
         print(response.text, file=sys.stderr)
         raise RuntimeError
 
-    assert 'location' in response.headers, \
-        'Err: Something went wrong with the Jenkins API'
+    assert (
+        'location' in response.headers
+    ), 'Err: Something went wrong with the Jenkins API'
     location = response.headers['Location']
 
-    assert ('queue' in location), \
-        'Err: Something went wrong with the Jenkins API'
+    assert (
+        'queue' in location
+    ), 'Err: Something went wrong with the Jenkins API'
     return location
 
 
-def wait_queue_item(location, auth, interval=5.):
+def wait_queue_item(location, auth, interval=5.0):
     """
     Wait until the item starts building.
     """
@@ -128,7 +135,7 @@ def wait_queue_item(location, auth, interval=5.):
     return build_url
 
 
-def wait_for_job(build_url, auth, interval=5.):
+def wait_for_job(build_url, auth, interval=5.0):
     """
     Wait until the build finishes.
     """
