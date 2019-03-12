@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 import time
@@ -11,9 +12,10 @@ from launch_jenkins import is_parametrized
 from launch_jenkins import launch_build
 from launch_jenkins import wait_queue_item
 from launch_jenkins import wait_for_job
+from launch_jenkins import save_log_to_file
 
 
-url = "http://example.com:8080/job/thing/job/other/master"
+url = "http://example.com:8080/job/thing/job/other/job/master"
 g_auth = ('user', 'pwd')
 
 
@@ -113,3 +115,16 @@ def test_wait_for_job(requests_mock):
     t0 = time.time()
     wait_for_job(url, g_auth, .2)
     assert time.time() - t0 >= .5
+
+
+def test_save_log_to_file(requests_mock):
+    content = 'some log content here'
+    filename = 'thing_other_master.txt'
+    requests_mock.get(url + '/consoleText', text=content)
+    try:
+        save_log_to_file(url, g_auth)
+        assert os.path.isfile(filename)
+        assert open(filename).read() == content
+    finally:
+        if os.path.isfile(filename):
+            os.remove(filename)
