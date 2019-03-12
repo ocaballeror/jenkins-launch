@@ -86,6 +86,13 @@ def launch_build(url, auth, params):
     url += ('buildWithParameters' if has_params else 'build')
     print('Sending build request')
     response = requests.post(url, params=params, auth=auth)
+    if response.status_code >= 400:
+        print(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
+        print(response.text, file=sys.stderr)
+        raise RuntimeError
+
+    assert 'location' in response.headers, \
+        'Err: Something went wrong with the Jenkins API'
     location = response.headers['Location']
 
     assert ('queue' in location), \
