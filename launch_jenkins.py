@@ -11,6 +11,10 @@ from itertools import cycle
 import requests
 
 
+def log(*args, **kwargs):
+    print(*args, **kwargs)
+
+
 def parse_args():
     """
     Parse command line arguments and return a tuple with the relevant
@@ -55,7 +59,7 @@ def show_progress(msg, duration):
     bar = cycle(['|', '/', '-', '\\'])
     progress = sys.stdout.isatty() and sys.platform != 'win32'
     if not progress:
-        print(msg + '...')
+        log(msg + '...')
 
     msg += '  '
     elapsed = 0
@@ -64,7 +68,7 @@ def show_progress(msg, duration):
             spaces = os.get_terminal_size(0).columns - len(msg) - 3
             spaces = max(spaces, 40)
             out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
-            print(out, end='\r')
+            log(out, end='\r')
         time.sleep(0.1)
         elapsed += 0.1
 
@@ -97,7 +101,7 @@ def launch_build(url, auth, params=None):
         url += '/'
     has_params = bool(params) or is_parametrized(url, auth)
     url += 'buildWithParameters' if has_params else 'build'
-    print('Sending build request')
+    log('Sending build request')
     response = requests.post(url, params=params, auth=auth)
     if response.status_code >= 400:
         print(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
@@ -131,7 +135,7 @@ def wait_queue_item(location, auth, interval=5.0):
             build_url = response['executable']['url']
             break
         show_progress('Job queued', interval)
-    print('')
+    log('')
     return build_url
 
 
@@ -147,7 +151,7 @@ def wait_for_job(build_url, auth, interval=5.0):
         msg = 'Build %s in progress' % response['displayName']
         show_progress(msg, interval)
         if response.get('result', False):
-            print('\nThe job ended in', response['result'])
+            log('\nThe job ended in', response['result'])
             break
     return response
 
@@ -167,7 +171,7 @@ def save_log_to_file(build_url, auth):
     with open(log_file, 'wb') as file:
         for block in console_log.iter_content(2048):
             file.write(block)
-    print('Job output saved to', log_file)
+    log('Job output saved to', log_file)
 
 
 if __name__ == '__main__':
