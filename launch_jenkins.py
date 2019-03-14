@@ -11,10 +11,12 @@ from itertools import cycle
 import requests
 
 
-CONFIG = {'dump': False}
+CONFIG = {'dump': False, 'quiet': False}
 
 
 def log(*args, **kwargs):
+    if CONFIG['quiet']:
+        return
     kwargs['file'] = sys.stderr
     print(*args, **kwargs)
 
@@ -51,6 +53,9 @@ def parse_args():
         '--dump', help='Print job output to stdout', action='store_true'
     )
     parser.add_argument(
+        '-q', '--quiet', help='Do not print user messages', action='store_true'
+    )
+    parser.add_argument(
         'params',
         help='(Optional) A list of parameters in the form key=value',
         nargs='*',
@@ -58,6 +63,7 @@ def parse_args():
     args = parser.parse_args()
 
     CONFIG['dump'] = args.dump
+    CONFIG['quiet'] = args.quiet
 
     params = {k: v for k, v in map(lambda f: f.split('='), args.params)}
     return (args.job, (args.user, args.token), params)
