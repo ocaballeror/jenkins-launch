@@ -84,7 +84,7 @@ def show_progress(msg, duration):
     progress = sys.stdout.isatty() and sys.platform != 'win32'
     progress |= CONFIG['progress']
     if not progress:
-        log(msg + '...')
+        log(msg + '...', end='\r')
         time.sleep(duration)
         return
 

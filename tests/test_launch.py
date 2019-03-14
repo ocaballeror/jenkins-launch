@@ -188,7 +188,7 @@ def test_show_progress_no_tty(capsys, monkeypatch):
     show_progress(msg, 0.5)
     outerr = capsys.readouterr()
     assert time.time() - t0 >= 0.5
-    assert outerr.err == '{}...\n'.format(msg)
+    assert outerr.err == '{}...\r'.format(msg)
     assert not outerr.out
 
     config = launch_jenkins.CONFIG.copy()
@@ -211,5 +211,5 @@ def test_show_progress_win32(capsys, monkeypatch):
     show_progress(msg, 0.5)
     outerr = capsys.readouterr()
     assert time.time() - t0 >= 0.5
-    assert outerr.err == '{}...\n'.format(msg)
+    assert outerr.err == '{}...\r'.format(msg)
     assert not outerr.out
