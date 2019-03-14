@@ -80,15 +80,16 @@ def show_progress(msg, duration):
     progress = sys.stdout.isatty() and sys.platform != 'win32'
     if not progress:
         log(msg + '...')
+        time.sleep(duration)
+        return
 
     msg += '  '
     elapsed = 0
     while elapsed < duration:
-        if progress:
-            spaces = os.get_terminal_size(0).columns - len(msg) - 3
-            spaces = max(spaces, 40)
-            out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
-            log(out, end='\r')
+        spaces = os.get_terminal_size(0).columns - len(msg) - 3
+        spaces = max(spaces, 40)
+        out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
+        log(out, end='\r')
         time.sleep(0.1)
         elapsed += 0.1
 
