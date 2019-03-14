@@ -11,7 +11,7 @@ from itertools import cycle
 import requests
 
 
-CONFIG = {'dump': False, 'quiet': False}
+CONFIG = {'dump': False, 'quiet': False, 'progress': False}
 
 
 def log(*args, **kwargs):
@@ -56,6 +56,9 @@ def parse_args():
         '-q', '--quiet', help='Do not print user messages', action='store_true'
     )
     parser.add_argument(
+        '-p', '--progress', help='Force show progress bar', action='store_true'
+    )
+    parser.add_argument(
         'params',
         help='(Optional) A list of parameters in the form key=value',
         nargs='*',
@@ -64,6 +67,7 @@ def parse_args():
 
     CONFIG['dump'] = args.dump
     CONFIG['quiet'] = args.quiet
+    CONFIG['progress'] = args.progress
 
     params = {k: v for k, v in map(lambda f: f.split('='), args.params)}
     return (args.job, (args.user, args.token), params)
@@ -78,6 +82,7 @@ def show_progress(msg, duration):
     """
     bar = cycle(['|', '/', '-', '\\'])
     progress = sys.stdout.isatty() and sys.platform != 'win32'
+    progress |= CONFIG['progress']
     if not progress:
         log(msg + '...')
         time.sleep(duration)
