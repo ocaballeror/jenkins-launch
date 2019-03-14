@@ -87,7 +87,7 @@ def show_progress(msg, duration):
     elapsed = 0
     while elapsed < duration:
         spaces = os.get_terminal_size(0).columns - len(msg) - 3
-        spaces = max(spaces, 40)
+        spaces = min(spaces, 40)
         out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
         log(out, end='\r')
         time.sleep(0.1)
