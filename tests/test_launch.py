@@ -157,7 +157,7 @@ def test_show_progress(capsys, monkeypatch):
 
     # Ensure we write the progress bar to stdout
     monkeypatch.setattr(sys, 'platform', 'notwin32')
-    monkeypatch.setattr(sys.stdout, 'isatty', lambda: True)
+    monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
     monkeypatch.setattr(os, 'get_terminal_size', lambda x: Dummy(30, 30))
 
     msg = 'message'
