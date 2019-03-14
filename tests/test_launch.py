@@ -14,6 +14,7 @@ from launch_jenkins import launch_build
 from launch_jenkins import wait_queue_item
 from launch_jenkins import wait_for_job
 from launch_jenkins import save_log_to_file
+from launch_jenkins import show_progress
 
 
 url = "http://example.com:8080/job/thing/job/other/job/master"
@@ -143,3 +144,69 @@ def test_dump_log_stdout(requests_mock, monkeypatch, capsys):
     out = capsys.readouterr()
     assert out.out == content
     assert not out.err
+
+
+def test_show_progress(capsys, monkeypatch):
+    class Dummy:
+        def __init__(self, columns=0, rows=0):
+            self.columns = columns
+            self.rows = rows
+
+    # Ensure we write the progress bar to stdout
+    monkeypatch.setattr(sys, 'platform', 'notwin32')
+    monkeypatch.setattr(sys.stdout, 'isatty', lambda: True)
+    monkeypatch.setattr(os, 'get_terminal_size', lambda x: Dummy(30, 30))
+
+    msg = 'message'
+    t0 = time.time()
+    show_progress(msg, 0.5)
+    outerr = capsys.readouterr()
+    assert time.time() - t0 >= 0.5
+    assert msg in outerr.err
+    assert '.' * 10 in outerr.err
+    assert not outerr.out
+
+    config = launch_jenkins.CONFIG.copy()
+    config['quiet'] = True
+    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    t0 = time.time()
+    show_progress(msg, 0.5)
+    outerr = capsys.readouterr()
+    assert time.time() - t0 >= 0.5
+    assert not outerr.err
+    assert not outerr.out
+
+
+def test_show_progress_no_tty(capsys, monkeypatch):
+    monkeypatch.setattr(sys, 'platform', 'notwin32')
+    monkeypatch.setattr(sys.stdout, 'isatty', lambda: False)
+    msg = 'message'
+    t0 = time.time()
+    show_progress(msg, 0.5)
+    outerr = capsys.readouterr()
+    assert time.time() - t0 >= 0.5
+    assert outerr.err == '{}...\n'.format(msg)
+    assert not outerr.out
+
+    config = launch_jenkins.CONFIG.copy()
+    config['quiet'] = True
+    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    t0 = time.time()
+    show_progress(msg, 0.5)
+    outerr = capsys.readouterr()
+    assert time.time() - t0 >= 0.5
+    assert not outerr.err
+    assert not outerr.out
+
+
+def test_show_progress_win32(capsys, monkeypatch):
+    # Ensure we write the progress bar to stdout
+    monkeypatch.setattr(sys, 'platform', 'win32')
+    monkeypatch.setattr(sys.stdout, 'isatty', lambda: True)
+    msg = 'message'
+    t0 = time.time()
+    show_progress(msg, 0.5)
+    outerr = capsys.readouterr()
+    assert time.time() - t0 >= 0.5
+    assert outerr.err == '{}...\n'.format(msg)
+    assert not outerr.out
