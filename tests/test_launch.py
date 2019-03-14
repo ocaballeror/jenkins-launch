@@ -8,6 +8,7 @@ import pytest
 
 
 sys.path.append('..')
+import launch_jenkins
 from launch_jenkins import is_parametrized
 from launch_jenkins import launch_build
 from launch_jenkins import wait_queue_item
@@ -40,6 +41,7 @@ def test_build_no_params(requests_mock):
     requests_mock.get(url + '/api/json', text='{}')
     # Launch build
     assert launch_build(url, g_auth, {}) == 'some queue'
+
 
 def test_build_with_params(requests_mock):
     headers = {'Location': 'param queue'}
@@ -128,3 +130,16 @@ def test_save_log_to_file(requests_mock):
     finally:
         if os.path.isfile(filename):
             os.remove(filename)
+
+
+def test_dump_log_stdout(requests_mock, monkeypatch, capsys):
+    config = launch_jenkins.CONFIG.copy()
+    config['dump'] = True
+    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+
+    content = 'job output goes\n here'
+    requests_mock.get(url + '/consoleText', text=content)
+    save_log_to_file(url, g_auth)
+    out = capsys.readouterr()
+    assert out.out == content
+    assert not out.err
