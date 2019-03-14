@@ -21,13 +21,16 @@ url = "http://example.com:8080/job/thing/job/other/job/master"
 g_auth = ('user', 'pwd')
 
 
-@pytest.mark.parametrize('response,expect', [
-    ({}, False),
-    ({'key': 'value'}, False),
-    ({'property': []}, False),
-    ({'property': [{'key': 'value'}]}, False),
-    ({'property': [{'parameterDefinitions': ['things']}]}, True),
-])
+@pytest.mark.parametrize(
+    'response,expect',
+    [
+        ({}, False),
+        ({'key': 'value'}, False),
+        ({'property': []}, False),
+        ({'property': [{'key': 'value'}]}, False),
+        ({'property': [{'parameterDefinitions': ['things']}]}, True),
+    ],
+)
 def test_is_parametrized(requests_mock, response, expect):
     response = json.dumps(response)
     requests_mock.get(url + '/api/json', text=response)
@@ -89,7 +92,7 @@ def test_launch_error_no_queue(requests_mock):
 
 def test_wait_queue_item(requests_mock):
     def set_finished():
-        time.sleep(.5)
+        time.sleep(0.5)
         resp = {'executable': {'url': 'some url'}}
         resp = json.dumps(resp)
         requests_mock.get(url + '/api/json', text=resp)
@@ -98,14 +101,14 @@ def test_wait_queue_item(requests_mock):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    wait_queue_item(url, g_auth, .2)
-    assert time.time() - t0 >= .5
+    wait_queue_item(url, g_auth, 0.2)
+    assert time.time() - t0 >= 0.5
 
 
 def test_wait_for_job(requests_mock):
     def set_finished():
         print('setting fisniehd')
-        time.sleep(.5)
+        time.sleep(0.5)
         print('setting fisniehd pt2')
         resp = {'result': 'success', 'displayName': 'name'}
         resp = json.dumps(resp)
@@ -116,8 +119,8 @@ def test_wait_for_job(requests_mock):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    wait_for_job(url, g_auth, .2)
-    assert time.time() - t0 >= .5
+    wait_for_job(url, g_auth, 0.2)
+    assert time.time() - t0 >= 0.5
 
 
 def test_save_log_to_file(requests_mock):
