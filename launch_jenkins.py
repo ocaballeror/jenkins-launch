@@ -19,6 +19,11 @@ def log(*args, **kwargs):
     print(*args, **kwargs)
 
 
+def errlog(*args, **kwargs):
+    kwargs['file'] = sys.stderr
+    print(*args, **kwargs)
+
+
 def parse_args():
     """
     Parse command line arguments and return a tuple with the relevant
@@ -91,8 +96,8 @@ def is_parametrized(url, auth):
     url += 'api/json'
     response = requests.get(url, auth=auth)
     if response.status_code >= 400:
-        log(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
-        log(response.text, file=sys.stderr)
+        errlog(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
+        errlog(response.text, file=sys.stderr)
         raise RuntimeError
 
     response = response.json()
@@ -113,8 +118,8 @@ def launch_build(url, auth, params=None):
     log('Sending build request')
     response = requests.post(url, params=params, auth=auth)
     if response.status_code >= 400:
-        log(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
-        log(response.text, file=sys.stderr)
+        errlog(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
+        errlog(response.text, file=sys.stderr)
         raise RuntimeError
 
     assert (
@@ -138,7 +143,7 @@ def wait_queue_item(location, auth, interval=5.0):
     while True:
         response = requests.get(queue, auth=auth).json()
         if response.get('cancelled', False):
-            log('Err: Build was cancelled', file=sys.stderr)
+            errlog('Err: Build was cancelled', file=sys.stderr)
             sys.exit(1)
         if response.get('executable', False):
             build_url = response['executable']['url']
