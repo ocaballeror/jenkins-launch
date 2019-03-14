@@ -11,6 +11,9 @@ from itertools import cycle
 import requests
 
 
+CONFIG = {'dump': False}
+
+
 def log(*args, **kwargs):
     kwargs['file'] = sys.stderr
     print(*args, **kwargs)
@@ -40,11 +43,16 @@ def parse_args():
         required=True,
     )
     parser.add_argument(
+        '--dump', help='Print job output to stdout', action='store_true'
+    )
+    parser.add_argument(
         'params',
         help='(Optional) A list of parameters in the form key=value',
         nargs='*',
     )
     args = parser.parse_args()
+
+    CONFIG['dump'] = args.dump
 
     params = {k: v for k, v in map(lambda f: f.split('='), args.params)}
     return (args.job, (args.user, args.token), params)
@@ -163,16 +171,23 @@ def save_log_to_file(build_url, auth):
     """
     if build_url[-1] != '/':
         build_url += '/'
-    job_name = build_url[build_url.find('/job/'):]
-    job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
-    log_file = job_name + '.txt'
+    if CONFIG['dump']:
+        file = sys.stdout
+    else:
+        job_name = build_url[build_url.find('/job/'):]
+        job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
+        log_file = job_name + '.txt'
+        file = open(log_file, 'w')
+
     url = build_url + 'consoleText'
     console_log = requests.get(url, auth=auth, stream=True)
     console_log.raise_for_status()
-    with open(log_file, 'wb') as file:
-        for block in console_log.iter_content(2048):
-            file.write(block)
-    log('Job output saved to', log_file)
+    for block in console_log.iter_content(2048):
+        file.write(block.decode('utf-8'))
+
+    if not CONFIG['dump']:
+        file.close()
+        log('Job output saved to', log_file)
 
 
 if __name__ == '__main__':
