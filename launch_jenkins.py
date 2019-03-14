@@ -166,15 +166,19 @@ def wait_for_job(build_url, auth, interval=5.0):
     """
     if build_url[-1] != '/':
         build_url += '/'
+
+    ret = 0
     poll_url = build_url + 'api/json'
     while True:
         response = requests.get(poll_url, auth=auth).json()
         msg = 'Build %s in progress' % response['displayName']
         show_progress(msg, interval)
         if response.get('result', False):
+            result = response['result']
             log('\nThe job ended in', response['result'])
+            ret = int(result.lower() != 'success')
             break
-    return response
+    return ret
 
 
 def save_log_to_file(build_url, auth):
@@ -207,5 +211,6 @@ if __name__ == '__main__':
     g_auth = launch_params[1]
     g_location = launch_build(*launch_params)
     g_build_url = wait_queue_item(g_location, g_auth)
-    g_response = wait_for_job(g_build_url, g_auth)
+    g_result = wait_for_job(g_build_url, g_auth)
     save_log_to_file(g_build_url, g_auth)
+    sys.exit(g_result)
