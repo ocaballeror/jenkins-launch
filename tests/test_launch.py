@@ -193,15 +193,12 @@ def assert_empty_progress(capsys):
 
 @pytest.mark.skipif('sys.version_info < (3, 0)')
 def test_show_progress(capsys, monkeypatch):
-    class Dummy:
-        def __init__(self, columns=0, rows=0):
-            self.columns = columns
-            self.rows = rows
+    Size = namedtuple("terminal_size", "columns rows")
 
     # Ensure we write the progress bar to stdout
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    monkeypatch.setattr(os, 'get_terminal_size', lambda x: Dummy(30, 30))
+    monkeypatch.setattr(os, 'get_terminal_size', lambda x: Size(30, 30))
     assert_progressbar(capsys)
 
     config = launch_jenkins.CONFIG.copy()
