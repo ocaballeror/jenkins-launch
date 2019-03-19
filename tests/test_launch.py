@@ -8,13 +8,13 @@ from collections import namedtuple
 import pytest
 
 
-import launch_jenkins
-from launch_jenkins import is_parametrized
-from launch_jenkins import launch_build
-from launch_jenkins import wait_queue_item
-from launch_jenkins import wait_for_job
-from launch_jenkins import save_log_to_file
-from launch_jenkins import show_progress
+import launch_and_wait
+from launch_and_wait import is_parametrized
+from launch_and_wait import launch_build
+from launch_and_wait import wait_queue_item
+from launch_and_wait import wait_for_job
+from launch_and_wait import save_log_to_file
+from launch_and_wait import show_progress
 
 
 url = "http://example.com:8080/job/thing/job/other/job/master"
@@ -137,9 +137,9 @@ def test_save_log_to_file(requests_mock):
 
 
 def test_dump_log_stdout(requests_mock, monkeypatch, capsys):
-    config = launch_jenkins.CONFIG.copy()
+    config = launch_and_wait.CONFIG.copy()
     config['dump'] = True
-    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
 
     content = 'job output goes\n here'
     requests_mock.get(url + '/consoleText', text=content)
@@ -201,9 +201,9 @@ def test_show_progress(capsys, monkeypatch):
     monkeypatch.setattr(os, 'get_terminal_size', lambda x: Size(30, 30))
     assert_progressbar(capsys)
 
-    config = launch_jenkins.CONFIG.copy()
+    config = launch_and_wait.CONFIG.copy()
     config['quiet'] = True
-    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
     assert_empty_progress(capsys)
 
 
@@ -216,9 +216,9 @@ def test_show_progress_no_tty(capsys, monkeypatch):
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stdout, 'isatty', lambda: False)
 
-    config = launch_jenkins.CONFIG.copy()
+    config = launch_and_wait.CONFIG.copy()
     config['quiet'] = True
-    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
     assert_empty_progress(capsys)
 
 
