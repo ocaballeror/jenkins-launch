@@ -191,6 +191,7 @@ def assert_empty_progress(capsys):
     assert not outerr.out
 
 
+@pytest.mark.skipif('sys.version_info < (3, 0)')
 def test_show_progress(capsys, monkeypatch):
     class Dummy:
         def __init__(self, columns=0, rows=0):
@@ -207,6 +208,11 @@ def test_show_progress(capsys, monkeypatch):
     config['quiet'] = True
     monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
     assert_empty_progress(capsys)
+
+
+def test_show_progress_py2(capsys, monkeypatch):
+    monkeypatch.setattr(sys, 'version_info', (2, 7, 9))
+    assert_no_progressbar(capsys)
 
 
 def test_show_progress_no_tty(capsys, monkeypatch):
