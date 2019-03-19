@@ -85,7 +85,11 @@ def show_progress(msg, duration):
     other message to stdout.
     """
     bar = cycle(['|', '/', '-', '\\'])
-    progress = sys.stderr.isatty() and sys.platform != 'win32'
+    progress = (
+        sys.stderr.isatty()
+        and sys.platform != 'win32'
+        and sys.version_info > (2,)
+    )
     progress |= CONFIG['progress']
     if not progress:
         log(msg + '...', end='\r')
