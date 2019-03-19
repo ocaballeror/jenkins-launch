@@ -3,6 +3,7 @@ import sys
 import json
 import time
 from threading import Thread
+from collections import namedtuple
 
 import pytest
 
