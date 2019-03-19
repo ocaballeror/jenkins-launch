@@ -7,7 +7,6 @@ from threading import Thread
 import pytest
 
 
-sys.path.append('..')
 import launch_jenkins
 from launch_jenkins import is_parametrized
 from launch_jenkins import launch_build
