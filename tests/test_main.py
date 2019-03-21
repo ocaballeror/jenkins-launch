@@ -56,10 +56,18 @@ def test_wait_main(monkeypatch):
     monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
     monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
 
-    wait_jenkins.main()
+    assert wait_jenkins.main() == 0
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('wait_for_job', [build_url, g_auth])
     assert call_log[2] == ('save_log_to_file', [build_url, g_auth])
+
+
+def test_wait_main_fail(monkeypatch):
+    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args)
+    monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job_fail)
+    monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
+
+    assert wait_jenkins.main() == 1
 
 
 def test_wait_main_invalid_url(monkeypatch):
@@ -96,10 +104,20 @@ def test_launch_and_wait_main(monkeypatch):
     monkeypatch.setattr(launch_and_wait, 'wait_for_job', wait_for_job)
     monkeypatch.setattr(launch_and_wait, 'save_log_to_file', save_log_to_file)
 
-    launch_and_wait.main()
+    assert launch_and_wait.main() == 0
 
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('launch_build', [build_url, g_auth, params])
     assert call_log[2] == ('wait_queue_item', [queue_item, g_auth])
     assert call_log[3] == ('wait_for_job', [build_url, g_auth])
     assert call_log[4] == ('save_log_to_file', [build_url, g_auth])
+
+
+def test_launch_and_wait_main_fail(monkeypatch):
+    monkeypatch.setattr(launch_and_wait, 'parse_args', parse_args)
+    monkeypatch.setattr(launch_and_wait, 'launch_build', launch_build)
+    monkeypatch.setattr(launch_and_wait, 'wait_queue_item', wait_queue_item)
+    monkeypatch.setattr(launch_and_wait, 'wait_for_job', wait_for_job_fail)
+    monkeypatch.setattr(launch_and_wait, 'save_log_to_file', save_log_to_file)
+
+    assert launch_and_wait.main() == 1
