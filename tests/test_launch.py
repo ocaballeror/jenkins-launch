@@ -110,9 +110,7 @@ def test_wait_queue_item(requests_mock):
 
 def test_wait_for_job(requests_mock):
     def set_finished():
-        print('setting fisniehd')
         time.sleep(0.5)
-        print('setting fisniehd pt2')
         resp = {'result': 'success', 'displayName': 'name'}
         resp = json.dumps(resp)
         requests_mock.get(url + '/api/json', text=resp)
