@@ -14,7 +14,10 @@ from launch_and_wait import launch_build
 from launch_and_wait import wait_queue_item
 from launch_and_wait import wait_for_job
 from launch_and_wait import save_log_to_file
-from launch_and_wait import show_progress
+
+from .test_helper import assert_empty_progress
+from .test_helper import assert_no_progressbar
+from .test_helper import assert_progressbar
 
 
 url = "http://example.com:8080/job/thing/job/other/job/master"
@@ -147,48 +150,6 @@ def test_dump_log_stdout(requests_mock, monkeypatch, capsys):
     out = capsys.readouterr()
     assert out.out == content
     assert not out.err
-
-
-def assert_progressbar(capsys):
-    """
-    Call the `show_progress` function and assert that a progress bar is shown.
-    """
-    msg = 'message'
-    t0 = time.time()
-    show_progress(msg, 0.5)
-    outerr = capsys.readouterr()
-    assert time.time() - t0 >= 0.5
-    assert msg in outerr.err
-    assert '.' * 10 in outerr.err
-    assert not outerr.out
-
-
-def assert_no_progressbar(capsys):
-    """
-    Call the `show_progress` function and assert that no progress bar is shown,
-    but the message is printed in its simple form.
-    """
-    msg = 'message'
-    t0 = time.time()
-    show_progress(msg, 0.5)
-    outerr = capsys.readouterr()
-    assert time.time() - t0 >= 0.5
-    assert outerr.err == '{}...\r'.format(msg)
-    assert not outerr.out
-
-
-def assert_empty_progress(capsys):
-    """
-    Call the `show_progress` function and assert that nothing is printed to
-    either stderr or stdout.
-    """
-    msg = 'message'
-    t0 = time.time()
-    show_progress(msg, 0.5)
-    outerr = capsys.readouterr()
-    assert time.time() - t0 >= 0.5
-    assert not outerr.err
-    assert not outerr.out
 
 
 @pytest.mark.skipif('sys.version_info < (3, 0)')
