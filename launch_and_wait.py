@@ -219,11 +219,18 @@ def save_log_to_file(build_url, auth):
         log('Job output saved to', log_file)
 
 
-if __name__ == '__main__':
+def main():
+    """
+    Launch a Jenkins build and wait for it to finish.
+    """
     launch_params = parse_args()
-    g_auth = launch_params[1]
-    g_location = launch_build(*launch_params)
-    g_build_url = wait_queue_item(g_location, g_auth)
-    g_result = wait_for_job(g_build_url, g_auth)
-    save_log_to_file(g_build_url, g_auth)
-    sys.exit(g_result)
+    auth = launch_params[1]
+    location = launch_build(*launch_params)
+    build_url = wait_queue_item(location, auth)
+    result = wait_for_job(build_url, auth)
+    save_log_to_file(build_url, auth)
+    return result
+
+
+if __name__ == '__main__':
+    sys.exit(main())
