@@ -42,5 +42,3 @@ def assert_empty_progress(capsys):
     assert time.time() - t0 >= 0.5
     assert not outerr.err
     assert not outerr.out
-
-
