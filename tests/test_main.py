@@ -33,7 +33,7 @@ def save_log_to_file(build_url, auth):
 
 
 def test_launch_main(monkeypatch):
-    call_log.clear()
+    del call_log[:]
 
     monkeypatch.setattr(launch_jenkins, 'parse_args', parse_args)
     monkeypatch.setattr(launch_jenkins, 'launch_build', launch_build)
@@ -46,7 +46,7 @@ def test_launch_main(monkeypatch):
 
 
 def test_wait_main(monkeypatch):
-    call_log.clear()
+    del call_log[:]
 
     monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args)
     monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
@@ -59,7 +59,7 @@ def test_wait_main(monkeypatch):
 
 
 def test_wait_main_invalid_url(monkeypatch):
-    call_log.clear()
+    del call_log[:]
 
     def parse_args_job_url():
         "Return a job url (without a build number at the end)."
@@ -84,7 +84,7 @@ def test_wait_main_invalid_url(monkeypatch):
 
 
 def test_launch_and_wait_main(monkeypatch):
-    call_log.clear()
+    del call_log[:]
 
     monkeypatch.setattr(launch_and_wait, 'parse_args', parse_args)
     monkeypatch.setattr(launch_and_wait, 'launch_build', launch_build)
