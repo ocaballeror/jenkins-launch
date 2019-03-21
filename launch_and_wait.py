@@ -189,7 +189,7 @@ def wait_for_job(build_url, auth, interval=5.0):
         if response.get('result', False):
             result = response['result']
             log('\nThe job ended in', response['result'])
-            ret = int(result.lower() != 'success')
+            ret = (result.lower() == 'success')
             break
     return ret
 
