@@ -2,6 +2,7 @@ import pytest
 
 import launch_jenkins
 import wait_jenkins
+import launch_and_wait
 
 
 call_log = []
@@ -80,3 +81,21 @@ def test_wait_main_invalid_url(monkeypatch):
     with pytest.raises(ValueError):
         wait_jenkins.main()
     assert not call_log
+
+
+def test_launch_and_wait_main(monkeypatch):
+    call_log.clear()
+
+    monkeypatch.setattr(launch_and_wait, 'parse_args', parse_args)
+    monkeypatch.setattr(launch_and_wait, 'launch_build', launch_build)
+    monkeypatch.setattr(launch_and_wait, 'wait_queue_item', wait_queue_item)
+    monkeypatch.setattr(launch_and_wait, 'wait_for_job', wait_for_job)
+    monkeypatch.setattr(launch_and_wait, 'save_log_to_file', save_log_to_file)
+
+    launch_and_wait.main()
+
+    assert call_log[0] == ('parse_args', [])
+    assert call_log[1] == ('launch_build', [build_url, g_auth, params])
+    assert call_log[2] == ('wait_queue_item', [queue_item, g_auth])
+    assert call_log[3] == ('wait_for_job', [True])
+    assert call_log[4] == ('save_log_to_file', [])
