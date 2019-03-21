@@ -132,6 +132,17 @@ def test_build_with_params(requests_mock):
     assert launch_build(url, g_auth, {'a': 'b'}) == 'param queue'
 
 
+def test_build_unparametrized_with_params(monkeypatch):
+    """
+    Check that an error is raised when the user passes parameters to a
+    non-parametrized job.
+    """
+    monkeypatch.setattr(launch_and_wait, 'is_parametrized', lambda x, y: False)
+    with pytest.raises(RuntimeError) as error:
+        launch_build(url, g_auth, params={'key': 'value'})
+        assert 'parameters' in str(error)
+
+
 def test_launch_error(requests_mock):
     requests_mock.get(url + '/api/json', text='{}')
     requests_mock.post(url + '/build', status_code=400)
