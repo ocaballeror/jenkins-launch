@@ -26,23 +26,27 @@ g_auth = ('user', 'pwd')
 g_params = ['-j', url, '-u', g_auth[0], '-t', g_auth[1]]
 
 
-@pytest.mark.parametrize('args', [
-    [],
-    ['-j', 'asdf', '-u', 'asdf'],
-    ['-j', 'asdf', '-u', 'asdf', '-t'],
-    ['-j', 'asdf', '-t', 'asdf'],
-    ['-j', 'asdf', '-u', '-t', 'asdf'],
-    ['-u', 'asdf', '-t', 'asdf'],
-    ['-j', '-u', 'asdf', '-t', 'asdf'],
-], ids=[
-    'Empty args',
-    '-t required',
-    '-t needs an argument',
-    '-u required',
-    '-u needs an argument',
-    '-j required',
-    '-j needs an argument',
-])
+@pytest.mark.parametrize(
+    'args',
+    [
+        [],
+        ['-j', 'asdf', '-u', 'asdf'],
+        ['-j', 'asdf', '-u', 'asdf', '-t'],
+        ['-j', 'asdf', '-t', 'asdf'],
+        ['-j', 'asdf', '-u', '-t', 'asdf'],
+        ['-u', 'asdf', '-t', 'asdf'],
+        ['-j', '-u', 'asdf', '-t', 'asdf'],
+    ],
+    ids=[
+        'Empty args',
+        '-t required',
+        '-t needs an argument',
+        '-u required',
+        '-u needs an argument',
+        '-j required',
+        '-j needs an argument',
+    ],
+)
 def test_parse_incomplete_args(monkeypatch, args):
     new_argv = ['python'] + args
     monkeypatch.setattr(sys, 'argv', new_argv)
@@ -188,6 +192,7 @@ def test_wait_for_job_fail(requests_mock):
     Check that wait_for_job returns False on any build result other than
     "success".
     """
+
     def set_finished():
         time.sleep(0.5)
         resp = {'result': 'failure', 'displayName': 'name'}

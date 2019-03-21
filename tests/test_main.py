@@ -12,25 +12,31 @@ params = {}
 queue_item = job_url + '/queue/item/1'
 build_url = job_url + '/1'
 
+
 def parse_args():
     call_log.append(('parse_args', []))
     return build_url, g_auth, params
+
 
 def launch_build(*args):
     call_log.append(('launch_build', list(args)))
     return queue_item
 
+
 def wait_queue_item(location, auth):
     call_log.append(('wait_queue_item', [location, auth]))
     return build_url
+
 
 def wait_for_job(build_url, auth):
     call_log.append(('wait_for_job', [build_url, auth]))
     return True
 
+
 def wait_for_job_fail(build_url, auth):
     call_log.append(('wait_for_job', [build_url, auth]))
     return False
+
 
 def save_log_to_file(build_url, auth):
     call_log.append(('save_log_to_file', [build_url, auth]))
