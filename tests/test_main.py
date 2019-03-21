@@ -57,17 +57,26 @@ def test_wait_main(monkeypatch):
     assert call_log[2] == ('save_log_to_file', [])
 
 
-def test_wait_main_invalid_build(monkeypatch):
+def test_wait_main_invalid_url(monkeypatch):
     call_log.clear()
 
-    def parse_args_invalid():
+    def parse_args_job_url():
+        "Return a job url (without a build number at the end)."
         return job_url, g_auth, params
 
-    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args_invalid)
+    def parse_args_invalid():
+        "Return something that's not even a url."
+        return 'asdfasdf', g_auth, params
+
     monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
     monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
 
+    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args_invalid)
     with pytest.raises(ValueError):
         wait_jenkins.main()
+    assert not call_log
 
+    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args_job_url)
+    with pytest.raises(ValueError):
+        wait_jenkins.main()
     assert not call_log
