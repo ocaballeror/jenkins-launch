@@ -14,6 +14,7 @@ from launch_and_wait import launch_build
 from launch_and_wait import wait_queue_item
 from launch_and_wait import wait_for_job
 from launch_and_wait import save_log_to_file
+from launch_and_wait import parse_args
 
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
@@ -22,6 +23,64 @@ from .test_helper import assert_progressbar
 
 url = "http://example.com:8080/job/thing/job/other/job/master"
 g_auth = ('user', 'pwd')
+g_params = ['-j', url, '-u', g_auth[0], '-t', g_auth[1]]
+
+
+@pytest.mark.parametrize('args', [
+    [],
+    ['-j', 'asdf', '-u', 'asdf'],
+    ['-j', 'asdf', '-u', 'asdf', '-t'],
+    ['-j', 'asdf', '-t', 'asdf'],
+    ['-j', 'asdf', '-u', '-t', 'asdf'],
+    ['-u', 'asdf', '-t', 'asdf'],
+    ['-j', '-u', 'asdf', '-t', 'asdf'],
+], ids=[
+    'Empty args',
+    '-t required',
+    '-t needs an argument',
+    '-u required',
+    '-u needs an argument',
+    '-j required',
+    '-j needs an argument',
+])
+def test_parse_incomplete_args(monkeypatch, args):
+    new_argv = ['python'] + args
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    with pytest.raises(SystemExit):
+        parse_args()
+
+
+def test_basic_argv(monkeypatch):
+    new_argv = ['python'] + g_params
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    launch_params = parse_args()
+    assert launch_params == (url, g_auth, {})
+
+
+def test_argv_params(monkeypatch):
+    params = ['key=value', 'keyt=other value']
+    build_params = {'key': 'value', 'keyt': 'other value'}
+    new_argv = ['python'] + g_params + params
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    launch_params = parse_args()
+    assert launch_params == (url, g_auth, build_params)
+
+
+def test_optional_flags(monkeypatch):
+    """
+    Check that the known optional flags are accepted.
+    """
+    params = ['-q', '--dump', '--progress']
+    new_argv = ['python'] + g_params + params
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    config = launch_and_wait.CONFIG.copy()
+    try:
+        parse_args()
+        assert launch_and_wait.CONFIG['dump']
+        assert launch_and_wait.CONFIG['quiet']
+        assert launch_and_wait.CONFIG['progress']
+    finally:
+        launch_and_wait.CONFIG = config
 
 
 @pytest.mark.parametrize(
