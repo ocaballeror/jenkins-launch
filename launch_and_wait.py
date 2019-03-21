@@ -133,7 +133,10 @@ def launch_build(url, auth, params=None):
     """
     if url[-1] != '/':
         url += '/'
-    has_params = bool(params) or is_parametrized(url, auth)
+    has_params = is_parametrized(url, auth)
+    if params and not has_params:
+        raise RuntimeError("This build doesn't accept any parameters")
+
     url += 'buildWithParameters' if has_params else 'build'
     log('Sending build request')
     response = requests.post(url, params=params, auth=auth)
