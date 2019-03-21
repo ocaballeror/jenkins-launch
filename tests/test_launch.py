@@ -120,8 +120,26 @@ def test_wait_for_job(requests_mock):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    wait_for_job(url, g_auth, 0.2)
+    assert wait_for_job(url, g_auth, 0.2)
     assert time.time() - t0 >= 0.5
+
+
+def test_wait_for_job_fail(requests_mock):
+    """
+    Check that wait_for_job returns False on any build result other than
+    "success".
+    """
+    def set_finished():
+        time.sleep(0.5)
+        resp = {'result': 'failure', 'displayName': 'name'}
+        resp = json.dumps(resp)
+        requests_mock.get(url + '/api/json', text=resp)
+
+    resp = {'displayName': 'name'}
+    requests_mock.get(url + '/api/json', text=json.dumps(resp))
+    Thread(target=set_finished).start()
+
+    assert not wait_for_job(url, g_auth, 0.2)
 
 
 def test_save_log_to_file(requests_mock):
