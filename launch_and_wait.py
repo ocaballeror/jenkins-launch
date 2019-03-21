@@ -229,7 +229,7 @@ def main():
     build_url = wait_queue_item(location, auth)
     result = wait_for_job(build_url, auth)
     save_log_to_file(build_url, auth)
-    return result
+    return int(not result)
 
 
 if __name__ == '__main__':
