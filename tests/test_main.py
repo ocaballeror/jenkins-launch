@@ -28,6 +28,10 @@ def wait_for_job(build_url, auth):
     call_log.append(('wait_for_job', [build_url, auth]))
     return True
 
+def wait_for_job_fail(build_url, auth):
+    call_log.append(('wait_for_job', [build_url, auth]))
+    return False
+
 def save_log_to_file(build_url, auth):
     call_log.append(('save_log_to_file', [build_url, auth]))
 
@@ -54,8 +58,8 @@ def test_wait_main(monkeypatch):
 
     wait_jenkins.main()
     assert call_log[0] == ('parse_args', [])
-    assert call_log[1] == ('wait_for_job', [True])
-    assert call_log[2] == ('save_log_to_file', [])
+    assert call_log[1] == ('wait_for_job', [build_url, g_auth])
+    assert call_log[2] == ('save_log_to_file', [build_url, g_auth])
 
 
 def test_wait_main_invalid_url(monkeypatch):
@@ -97,5 +101,5 @@ def test_launch_and_wait_main(monkeypatch):
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('launch_build', [build_url, g_auth, params])
     assert call_log[2] == ('wait_queue_item', [queue_item, g_auth])
-    assert call_log[3] == ('wait_for_job', [True])
-    assert call_log[4] == ('save_log_to_file', [])
+    assert call_log[3] == ('wait_for_job', [build_url, g_auth])
+    assert call_log[4] == ('save_log_to_file', [build_url, g_auth])
