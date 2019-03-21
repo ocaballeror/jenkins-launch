@@ -117,11 +117,6 @@ def test_build_with_params(requests_mock):
     headers = {'Location': 'param queue'}
     requests_mock.post(url + '/buildWithParameters', headers=headers)
 
-    # Set build properties as not parametrized
-    requests_mock.get(url + '/api/json', text='{}')
-    # Build with params
-    assert launch_build(url, g_auth, {'a': 'b'}) == 'param queue'
-
     # Set build properties as parametrized
     props = {'property': [{'parameterDefinitions': ['thing']}]}
     props = json.dumps(props)
