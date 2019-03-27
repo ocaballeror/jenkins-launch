@@ -14,7 +14,7 @@ queue_item = job_url + '/queue/item/1'
 build_url = job_url + '/1'
 
 
-def parse_args():
+def parse_args(*args, **kwargs):
     call_log.append(('parse_args', []))
     return build_url, g_auth, params
 
@@ -99,11 +99,11 @@ def test_wait_main_fail(monkeypatch):
 def test_wait_main_invalid_url(monkeypatch):
     del call_log[:]
 
-    def parse_args_job_url():
+    def parse_args_job_url(*args, **kwargs):
         "Return a job url (without a build number at the end)."
         return job_url, g_auth, params
 
-    def parse_args_invalid():
+    def parse_args_invalid(*args, **kwargs):
         "Return something that's not even a url."
         return 'asdfasdf', g_auth, params
 
