@@ -31,7 +31,7 @@ def errlog(*args, **kwargs):
     print(*args, **kwargs)
 
 
-def parse_args():
+def parse_args(verify_url=True):
     """
     Parse command line arguments and return a tuple with the relevant
     parameters. The tuple will be of type (url, auth, params), with the full
@@ -74,8 +74,11 @@ def parse_args():
     CONFIG['quiet'] = args.quiet
     CONFIG['progress'] = args.progress
 
-    job, params = parse_job_url(args.job)
-    params += args.params
+    if verify_url:
+        job, params = parse_job_url(args.job)
+        params += args.params
+    else:
+        job, params = args.job, args.params
 
     params = {k: v for k, v in map(lambda f: f.split('='), params)}
     return (job, (args.user, args.token), params)
