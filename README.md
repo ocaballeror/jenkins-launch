@@ -36,7 +36,7 @@ If your build takes parameters, you can pass them to the script as a list of `ke
 * `-j / --job`
     * Description: The URL of the jenkins job to launch
     * Required: yes
-    * Example: `http://your.jenkins.example.com:8080/job/folder/job/jenkins-launcher/branch/`
+    * Example: `http://your.jenkins.example.com:8080/job/folder/job/jenkins-launcher/job/branch/`
 * `-u / --user`
     * Description: The username for the Jenkins instance
     * Required: yes
