@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import sys
 import json
@@ -22,7 +24,7 @@ from launch_and_wait import is_progressbar_capable
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
 from .test_helper import assert_progressbar
-from .test_helper import set_get_terminal_size
+from .test_helper import terminal_size
 from .test_helper import raise_error
 
 
@@ -278,11 +280,10 @@ def test_dump_log_stdout(requests_mock, monkeypatch, capsys):
     assert not out.err
 
 
-def test_get_stderr_size_os(monkeypatch):
+def test_get_stderr_size_os(terminal_size):
     """
     Test get stderr size when the os module has the get_terminal_size method.
     """
-    set_get_terminal_size(monkeypatch)
     size = get_stderr_size_unix()
     assert size.rows == 30
     assert size.columns == 30
@@ -323,36 +324,33 @@ def test_get_stderr_size_stty(monkeypatch):
     assert size.columns == stty[1]
 
 
-def test_show_progress(capsys, monkeypatch):
+def test_show_progress(capsys, monkeypatch, terminal_size):
     """
     Set the necessary conditions and check that we can write a progress bar to
     stderr.
     """
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    set_get_terminal_size(monkeypatch)
     assert is_progressbar_capable()
     assert_progressbar(capsys)
 
 
-def test_show_progress_no_tty(capsys, monkeypatch):
+def test_show_progress_no_tty(capsys, monkeypatch, terminal_size):
     """
     Check that we show a crippled progress bar when stderr is not a terminal.
     """
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: False)
-    set_get_terminal_size(monkeypatch)
     assert not is_progressbar_capable()
     assert_no_progressbar(capsys)
 
 
-def test_show_progress_win32(capsys, monkeypatch):
+def test_show_progress_win32(capsys, monkeypatch, terminal_size):
     """
     Check that we show a crippled progress bar on Windows.
     """
     monkeypatch.setattr(sys, 'platform', 'win32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    set_get_terminal_size(monkeypatch)
     assert not is_progressbar_capable()
     assert_no_progressbar(capsys)
 
@@ -369,7 +367,7 @@ def test_show_progress_no_get_size(capsys, monkeypatch):
     assert_no_progressbar(capsys)
 
 
-def test_show_progress_force(capsys, monkeypatch):
+def test_show_progress_force(capsys, monkeypatch, terminal_size):
     """
     Check that we can force the progress bar to be shown, even if the terminal
     is not technically capable.
@@ -382,7 +380,6 @@ def test_show_progress_force(capsys, monkeypatch):
     # Set all the right conditions
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    set_get_terminal_size(monkeypatch)
 
     # Cripple conditions one by one
     with monkeypatch.context():
@@ -399,13 +396,12 @@ def test_show_progress_force(capsys, monkeypatch):
         assert not is_progressbar_capable()
 
 
-def test_no_progress_quiet(capsys, monkeypatch):
+def test_no_progress_quiet(capsys, monkeypatch, terminal_size):
     """
     Check that nothing is printed when the global "quiet" option is set.
     """
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    set_get_terminal_size(monkeypatch)
     assert is_progressbar_capable()
 
     config = launch_and_wait.CONFIG.copy()
