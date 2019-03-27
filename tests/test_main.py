@@ -10,8 +10,8 @@ call_log = []
 job_url = 'http://instance:8080/job/thing/job/branch'
 g_auth = ('username', 'pwd')
 params = {}
-queue_item = job_url + '/queue/item/1'
-build_url = job_url + '/1'
+queue_item = job_url + '/queue/item/1/'
+build_url = job_url + '/1/'
 
 
 def parse_args(*args, **kwargs):
