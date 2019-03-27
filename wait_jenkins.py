@@ -17,7 +17,7 @@ def main():
     """
     launch_params = parse_args(verify_url=False)
     build_url, auth, _ = launch_params
-    job_url, _, number = build_url.rpartition('/')
+    job_url, _, number = build_url.rstrip('/').rpartition('/')
     if not re.search(r'^\d+$', number):
         raise ValueError("This url doesn't look like a valid build. Make sure \
 there is a build number at the end.")
