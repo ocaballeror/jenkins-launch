@@ -26,13 +26,13 @@ Note: If pip is not installed, you should install it from your package manager r
 
 ## Execution
 
-### Build output
+##### Build output
 When the build finishes, the script will fetch the Jenkins output and save it to a file in the current directory. You can use the `--dump` flag to dump it to stdout instead.
 
-### Build parameters
+##### Build parameters
 If your build takes parameters, you can pass them to the script as a list of `key=value` pairs at the end of the command.
 
-### Arguments
+##### Arguments
 * `-j / --job`
     * Description: The URL of the jenkins job to launch
     * Required: yes
