@@ -10,6 +10,7 @@ import json
 import sys
 import time
 import os
+import re
 from itertools import cycle
 
 import requests
@@ -73,8 +74,33 @@ def parse_args():
     CONFIG['quiet'] = args.quiet
     CONFIG['progress'] = args.progress
 
-    params = {k: v for k, v in map(lambda f: f.split('='), args.params)}
-    return (args.job, (args.user, args.token), params)
+    job, params = parse_job_url(args.job)
+    params += args.params
+
+    params = {k: v for k, v in map(lambda f: f.split('='), params)}
+    return (job, (args.user, args.token), params)
+
+
+def parse_job_url(job):
+    """
+    Parse the user input job url and return it along with a list of parameters.
+    """
+    job = job.rstrip('/')
+    if re.search(r'/job/[^/]*$', job):
+        return job, []
+
+    url = re.search('^(.*)/build$', job)
+    if url:
+        return url.group(1), []
+
+    url = re.search(r'^(.*)/buildWithParameters\??(.*)$', job)
+    if url:
+        args = url.group(2).split('&')
+        if args == ['']:
+            args = []
+        return url.group(1), args
+
+    raise ValueError('Invalid job URL')
 
 
 def show_progress(msg, duration):
