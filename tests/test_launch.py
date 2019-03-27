@@ -24,7 +24,7 @@ from launch_and_wait import is_progressbar_capable
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
 from .test_helper import assert_progressbar
-from .test_helper import terminal_size
+from .test_helper import terminal_size  # noqa: F401
 from .test_helper import raise_error
 
 
