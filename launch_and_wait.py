@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Launch a jenkins job and wait for it to finish.
 """
