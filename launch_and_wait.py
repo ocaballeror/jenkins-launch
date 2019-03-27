@@ -13,6 +13,7 @@ import time
 import os
 import re
 from itertools import cycle
+from collections import namedtuple
 
 import requests
 
@@ -107,6 +108,38 @@ def parse_job_url(job):
     raise ValueError('Invalid job URL')
 
 
+def get_stderr_size_unix():
+    """
+    Get the size in rows and columns of the current STDERR.
+    """
+    if hasattr(os, 'get_terminal_size'):
+        return os.get_terminal_size(2)
+
+    Size = namedtuple('Size', 'rows columns')
+    output = os.popen('stty size -F /dev/stderr', 'r').read().split()
+    if len(output) != 2:
+        raise OSError(' '.join(output))
+    rows, columns = output
+    return Size(rows=int(rows), columns=int(columns))
+
+
+def is_progressbar_capable():
+    """
+    Determine whether the current system is capable of showing the progress bar
+    or not.
+    """
+    progress = (
+        sys.stderr.isatty()
+        and sys.platform != 'win32'
+    )
+    progress |= CONFIG['progress']
+    try:
+        get_stderr_size_unix()
+    except Exception:
+        return False
+    return progress
+
+
 def show_progress(msg, duration):
     """
     Show a message and a progress bar for the specified amount of time.
@@ -115,12 +148,7 @@ def show_progress(msg, duration):
     other message to stdout.
     """
     bar = cycle(['|', '/', '-', '\\'])
-    progress = (
-        sys.stderr.isatty()
-        and sys.platform != 'win32'
-        and sys.version_info >= (3,)
-    )
-    progress |= CONFIG['progress']
+    progress = is_progressbar_capable()
     if not progress:
         log(msg + '...', end='\r')
         time.sleep(duration)
@@ -129,7 +157,7 @@ def show_progress(msg, duration):
     msg += '  '
     elapsed = 0
     while elapsed < duration:
-        spaces = os.get_terminal_size(2).columns - len(msg) - 3
+        spaces = get_stderr_size_unix().columns - len(msg) - 3
         spaces = max(spaces, 40)
         out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
         log(out, end='\r')
