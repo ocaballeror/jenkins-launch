@@ -6,13 +6,33 @@ The main script here is `launch_and_wait.py`. Two additional helper scripts are
 provided (`launch_jenkins.py` and `wait_jenkins.py`) to only launch or only
 wait for a build, respectively. The cli options are the same for all of them.
 
+## Setup
+
+##### CentOS / RHEL
+Since these distros don't usually come with pip installed or even available, it is recommended that you install the basic dependency directly through `yum`. Note that this may not always work, as new dependencies could be added in the future.
+
+For now, however, installing the `python-requests` package should be enough to run these scripts.
+
+`$ yum install python-requests`
+
+##### Everything else
+The required dependencies are listed in `requirements.txt`. You may install them via pip with
+
+`$ pip install -r requirements.txt`
+
+For development and testing, use `requirements_dev.txt` instead.
+
+Note: If pip is not installed, you should install it from your package manager repos. It is usually called `python-pip` or similar.
+
+## Execution
+
 ### Build output
 When the build finishes, the script will fetch the Jenkins output and save it to a file in the current directory. You can use the `--dump` flag to dump it to stdout instead.
 
 ### Build parameters
 If your build takes parameters, you can pass them to the script as a list of `key=value` pairs at the end of the command.
 
-## Arguments
+### Arguments
 * `-j / --job`
     * Description: The URL of the jenkins job to launch
     * Required: yes
