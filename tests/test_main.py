@@ -1,3 +1,4 @@
+import sys
 import pytest
 
 import launch_jenkins
@@ -58,14 +59,33 @@ def test_launch_main(monkeypatch):
 def test_wait_main(monkeypatch):
     del call_log[:]
 
-    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args)
+    new_argv = [__file__, '-j', build_url, '-u', g_auth[0], '-t', g_auth[1]]
+    monkeypatch.setattr(sys, 'argv', new_argv)
     monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
     monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
 
     assert wait_jenkins.main() == 0
-    assert call_log[0] == ('parse_args', [])
-    assert call_log[1] == ('wait_for_job', [build_url, g_auth])
-    assert call_log[2] == ('save_log_to_file', [build_url, g_auth])
+    assert call_log[0] == ('wait_for_job', [build_url, g_auth])
+    assert call_log[1] == ('save_log_to_file', [build_url, g_auth])
+
+
+def test_wait_main_invalid_build(monkeypatch):
+    """
+    Run the main function in wait_jenkins.py, but give it the url of a pipeline
+    instead of a build (missing the build number at the end).
+
+    The regex test should fail with a ValueError.
+    """
+    del call_log[:]
+
+    new_argv = [__file__, '-j', job_url, '-u', g_auth[0], '-t', g_auth[1]]
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
+    monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
+
+    with pytest.raises(ValueError):
+        wait_jenkins.main()
+    assert not call_log
 
 
 def test_wait_main_fail(monkeypatch):
