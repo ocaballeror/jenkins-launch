@@ -114,7 +114,7 @@ def show_progress(msg, duration):
     progress = (
         sys.stderr.isatty()
         and sys.platform != 'win32'
-        and sys.version_info > (2,)
+        and sys.version_info >= (3,)
     )
     progress |= CONFIG['progress']
     if not progress:
