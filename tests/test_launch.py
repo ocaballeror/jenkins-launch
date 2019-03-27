@@ -15,6 +15,7 @@ from launch_and_wait import wait_queue_item
 from launch_and_wait import wait_for_job
 from launch_and_wait import save_log_to_file
 from launch_and_wait import parse_args
+from launch_and_wait import parse_job_url
 
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
@@ -101,6 +102,41 @@ def test_is_parametrized(requests_mock, response, expect):
     response = json.dumps(response)
     requests_mock.get(url + '/api/json', text=response)
     assert is_parametrized(url, g_auth) == expect
+
+
+def test_parse_job_url():
+    assert parse_job_url(url) == (url, [])
+    assert parse_job_url(url + '/') == (url, [])
+    assert parse_job_url(url + '/build') == (url, [])
+    assert parse_job_url(url + '/build/') == (url, [])
+    assert parse_job_url(url + '/buildWithParameters') == (url, [])
+    assert parse_job_url(url + '/buildWithParameters/') == (url, [])
+
+
+def test_parse_job_url_params():
+    build_url = url + '/buildWithParameters?a=b'
+    assert parse_job_url(build_url) == (url, ['a=b'])
+
+    build_url = url + '/buildWithParameters?a=b&c=d'
+    assert parse_job_url(build_url) == (url, ['a=b', 'c=d'])
+
+
+@pytest.mark.parametrize(
+    'job_url',
+    [
+        'http',
+        'http://thing:8080/job/name/anotherslashjobhere',
+        url + '/asdf',
+        url + '/build?a=b',
+        url + '/buildwiththings?a=b',
+        url + '/buildwithparameters',
+        url + '/buildwithparameters?a=b',
+    ],
+)
+def test_parse_job_url_error(job_url):
+    with pytest.raises(ValueError) as error:
+        parse_job_url(job_url)
+    assert 'invalid job url' in str(error.value).lower()
 
 
 def test_build_no_params(requests_mock):
