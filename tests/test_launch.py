@@ -291,11 +291,14 @@ def test_show_progress(capsys, monkeypatch):
 
 
 def test_show_progress_py2(capsys, monkeypatch):
-    monkeypatch.setattr(sys, 'version_info', (2, 7, 9))
+    monkeypatch.setattr(sys, 'version_info', (2, 7))
+    monkeypatch.setattr(sys, 'platform', 'unix')
+    monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
     assert_no_progressbar(capsys)
 
 
 def test_show_progress_no_tty(capsys, monkeypatch):
+    monkeypatch.setattr(sys, 'version_info', (3, 0))
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stdout, 'isatty', lambda: False)
 
@@ -306,6 +309,7 @@ def test_show_progress_no_tty(capsys, monkeypatch):
 
 
 def test_show_progress_win32(capsys, monkeypatch):
+    monkeypatch.setattr(sys, 'version_info', (3, 0))
     monkeypatch.setattr(sys, 'platform', 'win32')
     monkeypatch.setattr(sys.stdout, 'isatty', lambda: True)
     assert_no_progressbar(capsys)
