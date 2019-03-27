@@ -2,8 +2,8 @@ import os
 import sys
 import json
 import time
+from io import StringIO
 from threading import Thread
-from collections import namedtuple
 
 import pytest
 
@@ -16,10 +16,14 @@ from launch_and_wait import wait_for_job
 from launch_and_wait import save_log_to_file
 from launch_and_wait import parse_args
 from launch_and_wait import parse_job_url
+from launch_and_wait import get_stderr_size_unix
+from launch_and_wait import is_progressbar_capable
 
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
 from .test_helper import assert_progressbar
+from .test_helper import set_get_terminal_size
+from .test_helper import raise_error
 
 
 url = "http://example.com:8080/job/thing/job/other/job/master"
@@ -274,42 +278,137 @@ def test_dump_log_stdout(requests_mock, monkeypatch, capsys):
     assert not out.err
 
 
-@pytest.mark.skipif('sys.version_info < (3, 0)')
-def test_show_progress(capsys, monkeypatch):
-    Size = namedtuple("terminal_size", "columns rows")
+def test_get_stderr_size_os(monkeypatch):
+    """
+    Test get stderr size when the os module has the get_terminal_size method.
+    """
+    set_get_terminal_size(monkeypatch)
+    size = get_stderr_size_unix()
+    assert size.rows == 30
+    assert size.columns == 30
 
-    # Ensure we write the progress bar to stdout
+
+def test_get_stderr_size_popen(monkeypatch):
+    """
+    Test get stderr size when the os module does not have the get_terminal_size
+    method, and a popen must be used instead.
+    """
+
+    def fake_popen(*args, **kwargs):
+        print('returning tihs')
+        return StringIO('30 30')
+
+    if hasattr(os, 'get_terminal_size'):
+        monkeypatch.delattr(os, 'get_terminal_size')
+    monkeypatch.setattr(os, 'popen', fake_popen)
+    size = get_stderr_size_unix()
+    assert size.rows == 30
+    assert size.columns == 30
+
+
+@pytest.mark.skipif('sys.platform == "win32"')
+def test_get_stderr_size_stty(monkeypatch):
+    """
+    Test get stderr size when the os module does not have the get_terminal_size
+    method, and a popen must be used instead.
+    """
+    if hasattr(os, 'get_terminal_size'):
+        monkeypatch.delattr(os, 'get_terminal_size')
+    try:
+        size = get_stderr_size_unix()
+    except OSError as error:
+        pytest.skip(str(error))
+    stty = os.popen('stty size -F /dev/stderr', 'r').read().split()
+    assert size.rows == stty[0]
+    assert size.columns == stty[1]
+
+
+def test_show_progress(capsys, monkeypatch):
+    """
+    Set the necessary conditions and check that we can write a progress bar to
+    stderr.
+    """
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    monkeypatch.setattr(os, 'get_terminal_size', lambda x: Size(30, 30))
+    set_get_terminal_size(monkeypatch)
+    assert is_progressbar_capable()
     assert_progressbar(capsys)
-
-    config = launch_and_wait.CONFIG.copy()
-    config['quiet'] = True
-    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
-    assert_empty_progress(capsys)
-
-
-def test_show_progress_py2(capsys, monkeypatch):
-    monkeypatch.setattr(sys, 'version_info', (2, 7))
-    monkeypatch.setattr(sys, 'platform', 'unix')
-    monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    assert_no_progressbar(capsys)
 
 
 def test_show_progress_no_tty(capsys, monkeypatch):
-    monkeypatch.setattr(sys, 'version_info', (3, 0))
+    """
+    Check that we show a crippled progress bar when stderr is not a terminal.
+    """
     monkeypatch.setattr(sys, 'platform', 'notwin32')
-    monkeypatch.setattr(sys.stdout, 'isatty', lambda: False)
+    monkeypatch.setattr(sys.stderr, 'isatty', lambda: False)
+    set_get_terminal_size(monkeypatch)
+    assert not is_progressbar_capable()
+    assert_no_progressbar(capsys)
+
+
+def test_show_progress_win32(capsys, monkeypatch):
+    """
+    Check that we show a crippled progress bar on Windows.
+    """
+    monkeypatch.setattr(sys, 'platform', 'win32')
+    monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
+    set_get_terminal_size(monkeypatch)
+    assert not is_progressbar_capable()
+    assert_no_progressbar(capsys)
+
+
+def test_show_progress_no_get_size(capsys, monkeypatch):
+    """
+    Check that we show a crippled progress bar when we can't get the terminal
+    size.
+    """
+    monkeypatch.setattr(sys, 'platform', 'notwin32')
+    monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
+    monkeypatch.setattr(launch_and_wait, 'get_stderr_size_unix', raise_error)
+    assert not is_progressbar_capable()
+    assert_no_progressbar(capsys)
+
+
+def test_show_progress_force(capsys, monkeypatch):
+    """
+    Check that we can force the progress bar to be shown, even if the terminal
+    is not technically capable.
+    """
+    # Force progress through config
+    config = launch_and_wait.CONFIG.copy()
+    config['progress'] = True
+    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
+
+    # Set all the right conditions
+    monkeypatch.setattr(sys, 'platform', 'notwin32')
+    monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
+    set_get_terminal_size(monkeypatch)
+
+    # Cripple conditions one by one
+    with monkeypatch.context():
+        monkeypatch.setattr(sys, 'platform', 'win32')
+        assert is_progressbar_capable()
+    with monkeypatch.context():
+        monkeypatch.setattr(sys.stderr, 'isatty', lambda: False)
+        assert is_progressbar_capable()
+    with monkeypatch.context():
+        # Even force is set, we can't progress bar without stderr size
+        monkeypatch.setattr(
+            launch_and_wait, 'get_stderr_size_unix', raise_error
+        )
+        assert not is_progressbar_capable()
+
+
+def test_no_progress_quiet(capsys, monkeypatch):
+    """
+    Check that nothing is printed when the global "quiet" option is set.
+    """
+    monkeypatch.setattr(sys, 'platform', 'notwin32')
+    monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
+    set_get_terminal_size(monkeypatch)
+    assert is_progressbar_capable()
 
     config = launch_and_wait.CONFIG.copy()
     config['quiet'] = True
     monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
     assert_empty_progress(capsys)
-
-
-def test_show_progress_win32(capsys, monkeypatch):
-    monkeypatch.setattr(sys, 'version_info', (3, 0))
-    monkeypatch.setattr(sys, 'platform', 'win32')
-    monkeypatch.setattr(sys.stdout, 'isatty', lambda: True)
-    assert_no_progressbar(capsys)

@@ -1,4 +1,7 @@
+import os
 import time
+from collections import namedtuple
+
 from launch_and_wait import show_progress
 
 
@@ -42,3 +45,15 @@ def assert_empty_progress(capsys):
     assert time.time() - t0 >= 0.5
     assert not outerr.err
     assert not outerr.out
+
+
+def set_get_terminal_size(monkeypatch):
+    def fake_terminal_size(*args, **kwargs):
+        return Size(30, 30)
+
+    Size = namedtuple('terminal_size', 'columns rows')
+    monkeypatch.setattr(os, 'get_terminal_size', fake_terminal_size)
+
+
+def raise_error(*args, **kwargs):
+    raise RuntimeError
