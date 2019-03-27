@@ -243,15 +243,23 @@ def wait_for_job(build_url, auth, interval=5.0):
 
     ret = 0
     poll_url = build_url + 'api/json'
+    response = requests.get(poll_url, auth=auth)
+    if response.status_code == 404:
+        build_number = build_url.rstrip('/').rpartition('/')[2]
+        raise RuntimeError('Build #%s does not exist' % build_number)
+    if response.status_code >= 400:
+        raise RuntimeError(response.text)
+
+    response = response.json()
     while True:
-        response = requests.get(poll_url, auth=auth).json()
-        msg = 'Build %s in progress' % response['displayName']
-        show_progress(msg, interval)
         if response.get('result', False):
             result = response['result']
             log('\nThe job ended in', response['result'])
             ret = (result.lower() == 'success')
             break
+        msg = 'Build %s in progress' % response['displayName']
+        show_progress(msg, interval)
+        response = requests.get(poll_url, auth=auth).json()
     return ret
 
 
