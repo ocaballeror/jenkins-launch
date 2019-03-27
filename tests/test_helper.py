@@ -13,7 +13,7 @@ def assert_progressbar(capsys):
     t0 = time.time()
     show_progress(msg, 0.5)
     outerr = capsys.readouterr()
-    assert time.time() - t0 >= 0.5
+    assert time.time() - t0 >= 0.4
     assert msg in outerr.err
     assert '.' * 10 in outerr.err
     assert not outerr.out
@@ -28,7 +28,7 @@ def assert_no_progressbar(capsys):
     t0 = time.time()
     show_progress(msg, 0.5)
     outerr = capsys.readouterr()
-    assert time.time() - t0 >= 0.5
+    assert time.time() - t0 >= 0.4
     assert outerr.err == '{}...\r'.format(msg)
     assert not outerr.out
 
@@ -42,7 +42,7 @@ def assert_empty_progress(capsys):
     t0 = time.time()
     show_progress(msg, 0.5)
     outerr = capsys.readouterr()
-    assert time.time() - t0 >= 0.5
+    assert time.time() - t0 >= 0.4
     assert not outerr.err
     assert not outerr.out
 
