@@ -131,12 +131,19 @@ def test_parse_job_url_params():
     'job_url',
     [
         'http',
-        'http://thing:8080/job/name/anotherslashjobhere',
         url + '/asdf',
         url + '/build?a=b',
         url + '/buildwiththings?a=b',
         url + '/buildwithparameters',
         url + '/buildwithparameters?a=b',
+    ],
+    ids=[
+        'not a url',
+        'does last section is not a job',
+        '/build takes no params',
+        'invalid api name',
+        'lowercase buildwithparameters',
+        'lowercase buildwithparameters with params',
     ],
 )
 def test_parse_job_url_error(job_url):
