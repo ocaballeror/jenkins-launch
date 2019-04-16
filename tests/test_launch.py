@@ -69,8 +69,8 @@ def test_basic_argv(monkeypatch):
 
 
 def test_argv_params(monkeypatch):
-    params = ['key=value', 'keyt=other value']
-    build_params = {'key': 'value', 'keyt': 'other value'}
+    params = ['key=value', 'keyt=other value', 'empty=']
+    build_params = {'key': 'value', 'keyt': 'other value', 'empty': ''}
     new_argv = ['python'] + g_params + params
     monkeypatch.setattr(sys, 'argv', new_argv)
     launch_params = parse_args()
