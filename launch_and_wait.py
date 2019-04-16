@@ -82,7 +82,11 @@ def parse_args(verify_url=True):
     else:
         job, params = args.job, args.params
 
-    params = {k: v for k, v in map(lambda f: f.split('='), params)}
+    try:
+        params = {k: v for k, v in map(lambda f: f.split('='), params)}
+    except Exception:
+        print('Job arguments are not properly formatted', file=sys.stderr)
+        raise SystemExit
     return (job, (args.user, args.token), params)
 
 
