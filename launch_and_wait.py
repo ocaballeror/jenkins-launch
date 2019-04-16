@@ -201,7 +201,7 @@ def launch_build(url, auth, params=None):
 
     url += 'buildWithParameters' if has_params else 'build'
     log('Sending build request')
-    response = requests.post(url, params=params, auth=auth)
+    response = requests.post(url, data=params, auth=auth)
     if response.status_code >= 400:
         errlog(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
         errlog(response.text, file=sys.stderr)
