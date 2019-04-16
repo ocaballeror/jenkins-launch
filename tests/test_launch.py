@@ -77,6 +77,19 @@ def test_argv_params(monkeypatch):
     assert launch_params == (url, g_auth, build_params)
 
 
+@pytest.mark.parametrize('params', [
+    (['key']),
+    (['key: value']),
+    (['key=value', 'value: key'])
+])
+def test_argv_params_wrong_format(monkeypatch, params):
+    new_argv = ['python'] + g_params + params
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    with pytest.raises(SystemExit) as error:
+        parse_args()
+        assert 'not properly formatted' in error.value
+
+
 def test_optional_flags(monkeypatch):
     """
     Check that the known optional flags are accepted.
