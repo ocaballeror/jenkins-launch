@@ -83,7 +83,7 @@ def parse_args(verify_url=True):
         job, params = args.job, args.params
 
     try:
-        params = {k: v for k, v in map(lambda f: f.split('='), params)}
+        params = {k: v for k, v in map(lambda f: f.split('=', 1), params)}
     except Exception:
         print('Job arguments are not properly formatted', file=sys.stderr)
         raise SystemExit
