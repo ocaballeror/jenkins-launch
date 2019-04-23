@@ -33,6 +33,22 @@ def errlog(*args, **kwargs):
     print(*args, **kwargs)
 
 
+def parse_kwarg(kwarg):
+    """
+    Parse a key=value argument from the command line and return it as a
+    (key, value) tuple.
+    """
+    count = kwarg.count('=')
+    if count == 0:
+        msg = 'Invalid job argument: "{}". Please use key=value format'
+        print(msg.format(kwarg), file=sys.stderr)
+        raise SystemExit
+
+    if count == 1 and kwarg.endswith('='):
+        return kwarg[:-1], ''
+    return kwarg.split('=', 1)
+
+
 def parse_args(verify_url=True):
     """
     Parse command line arguments and return a tuple with the relevant
@@ -83,7 +99,7 @@ def parse_args(verify_url=True):
         job, params = args.job, args.params
 
     try:
-        params = {k: v for k, v in map(lambda f: f.split('=', 1), params)}
+        params = {k: v for k, v in map(parse_kwarg, params)}
     except Exception:
         print('Job arguments are not properly formatted', file=sys.stderr)
         raise SystemExit
