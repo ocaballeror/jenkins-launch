@@ -87,12 +87,13 @@ def test_argv_params(monkeypatch):
     (['key: value']),
     (['key=value', 'value: key'])
 ])
-def test_argv_params_wrong_format(monkeypatch, params):
+def test_argv_params_wrong_format(monkeypatch, params, capsys):
     new_argv = ['python'] + g_params + params
     monkeypatch.setattr(sys, 'argv', new_argv)
-    with pytest.raises(SystemExit) as error:
+    with pytest.raises(SystemExit):
         parse_args()
-        assert 'not properly formatted' in error.value
+    out, err = capsys.readouterr()
+    assert 'use key=value format' in err
 
 
 def test_optional_flags(monkeypatch):
