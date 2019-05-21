@@ -33,6 +33,20 @@ g_auth = ('user', 'pwd')
 g_params = ['-j', url, '-u', g_auth[0], '-t', g_auth[1]]
 
 
+class FakeResponse:
+    def __init__(self, text='', headers=None):
+        self.text = text
+        self.headers = headers or {}
+
+@pytest.fixture
+def mock_url(monkeypatch):
+    def ret(text):
+        def mock(*args, **kwargs):
+            return FakeResponse(text)
+        monkeypatch.setattr(launch_and_wait, 'get_url', mock)
+    return ret
+
+
 @pytest.mark.parametrize(
     'args',
     [
@@ -123,9 +137,8 @@ def test_optional_flags(monkeypatch):
         ({'property': [{'parameterDefinitions': ['things']}]}, True),
     ],
 )
-def test_is_parametrized(requests_mock, response, expect):
-    response = json.dumps(response)
-    requests_mock.get(url + '/api/json', text=response)
+def test_is_parametrized(mock_url, response, expect):
+    mock_url(json.dumps(response))
     assert is_parametrized(url, g_auth) == expect
 
 
