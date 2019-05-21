@@ -12,10 +12,19 @@ import sys
 import time
 import os
 import re
+import base64
 from itertools import cycle
 from collections import namedtuple
+from collections import OrderedDict
 
-import requests
+if sys.version_info >= (3,):
+    from urllib.request import Request, quote, urlopen
+    from urllib.error import URLError, HTTPError
+    from collections.abc import Mapping, MutableMapping
+else:
+    from urllib2 import Request, quote, urlopen
+    from urllib2 import URLError, HTTPError
+    from collections import Mapping, MutableMapping
 
 
 CONFIG = {'dump': False, 'quiet': False, 'progress': False}
@@ -148,10 +157,7 @@ def is_progressbar_capable():
     Determine whether the current system is capable of showing the progress bar
     or not.
     """
-    progress = (
-        sys.stderr.isatty()
-        and sys.platform != 'win32'
-    )
+    progress = sys.stderr.isatty() and sys.platform != 'win32'
     progress |= CONFIG['progress']
     try:
         get_stderr_size_unix()
@@ -184,6 +190,111 @@ def show_progress(msg, duration):
         time.sleep(0.1)
         elapsed += 0.1
 
+class CaseInsensitiveDict(MutableMapping):
+    """A case-insensitive ``dict``-like object.
+
+    Implements all methods and operations of
+    ``MutableMapping`` as well as dict's ``copy``. Also
+    provides ``lower_items``.
+
+    All keys are expected to be strings. The structure remembers the
+    case of the last key to be set, and ``iter(instance)``,
+    ``keys()``, ``items()``, ``iterkeys()``, and ``iteritems()``
+    will contain case-sensitive keys. However, querying and contains
+    testing is case insensitive::
+
+        cid = CaseInsensitiveDict()
+        cid['Accept'] = 'application/json'
+        cid['aCCEPT'] == 'application/json'  # True
+        list(cid) == ['Accept']  # True
+
+    For example, ``headers['content-encoding']`` will return the
+    value of a ``'Content-Encoding'`` response header, regardless
+    of how the header name was originally stored.
+
+    If the constructor, ``.update``, or equality comparison
+    operations are given keys that have equal ``.lower()``s, the
+    behavior is undefined.
+    """
+
+    def __init__(self, data=None, **kwargs):
+        self._store = OrderedDict()
+        if data is None:
+            data = {}
+        self.update(data, **kwargs)
+
+    def __setitem__(self, key, value):
+        # Use the lowercased key for lookups, but store the actual
+        # key alongside the value.
+        self._store[key.lower()] = (key, value)
+
+    def __getitem__(self, key):
+        return self._store[key.lower()][1]
+
+    def __delitem__(self, key):
+        del self._store[key.lower()]
+
+    def __iter__(self):
+        return (casedkey for casedkey, mappedvalue in self._store.values())
+
+    def __len__(self):
+        return len(self._store)
+
+    def lower_items(self):
+        """Like iteritems(), but with all lowercase keys."""
+        return (
+            (lowerkey, keyval[1])
+            for (lowerkey, keyval)
+            in self._store.items()
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, Mapping):
+            other = CaseInsensitiveDict(other)
+        else:
+            return NotImplemented
+        # Compare insensitively
+        return dict(self.lower_items()) == dict(other.lower_items())
+
+    # Copy is required
+    def copy(self):
+        return CaseInsensitiveDict(self._store.values())
+
+    def __repr__(self):
+        return str(dict(self.items()))
+
+
+def get_url(url, auth, data=None, stream=0):
+    def stream_response():
+        while True:
+            response.text = response.read(stream)
+            if response.text:
+                yield response
+            else:
+                break
+
+    url = quote(url, safe=':/=?&')
+    headers = {'User-Agent': 'foobar'}
+    auth = ':'.join(auth)
+    if sys.version_info >= (3,):
+        basic = base64.b64encode(auth.encode('ascii')).decode('ascii')
+    else:
+        basic = base64.b64encode(auth)
+    headers['Authorization'] = 'Basic {}'.format(basic)
+
+    data = json.dumps(data).encode('utf-8')
+    req = Request(url, data, headers=headers)
+    response = urlopen(req)
+    if sys.version_info >= (3,):
+        response.headers = CaseInsensitiveDict(response.headers._headers)
+    else:
+        response.headers = CaseInsensitiveDict(response.headers.dict)
+    if stream:
+        return stream_response()
+    else:
+        response.text = response.read().decode('utf-8')
+        return response
+
 
 def is_parametrized(url, auth):
     """
@@ -192,13 +303,9 @@ def is_parametrized(url, auth):
     if url[-1] != '/':
         url += '/'
     url += 'api/json'
-    response = requests.get(url, auth=auth)
-    if response.status_code >= 400:
-        errlog(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
-        errlog(response.text, file=sys.stderr)
-        raise RuntimeError
 
-    response = response.json()
+    response = get_url(url, auth=auth)
+    response = json.loads(response.text)
     props = response.get('property', False)
     if not props:
         return False
@@ -217,14 +324,10 @@ def launch_build(url, auth, params=None):
 
     url += 'buildWithParameters' if has_params else 'build'
     log('Sending build request')
-    response = requests.post(url, data=params, auth=auth)
-    if response.status_code >= 400:
-        errlog(json.dumps(dict(response.headers), indent=4), file=sys.stderr)
-        errlog(response.text, file=sys.stderr)
-        raise RuntimeError
+    response = get_url(url, data=params, auth=auth)
 
     assert (
-        'location' in response.headers
+        'Location' in response.headers
     ), 'Err: Something went wrong with the Jenkins API'
     location = response.headers['Location']
 
@@ -242,7 +345,8 @@ def wait_queue_item(location, auth, interval=5.0):
         location += '/'
     queue = location + 'api/json'
     while True:
-        response = requests.get(queue, auth=auth).json()
+        response = get_url(queue, auth=auth)
+        response = json.loads(response.text)
         if response.get('cancelled', False):
             errlog('Err: Build was cancelled', file=sys.stderr)
             sys.exit(1)
@@ -263,23 +367,25 @@ def wait_for_job(build_url, auth, interval=5.0):
 
     ret = 0
     poll_url = build_url + 'api/json'
-    response = requests.get(poll_url, auth=auth)
-    if response.status_code == 404:
-        build_number = build_url.rstrip('/').rpartition('/')[2]
-        raise RuntimeError('Build #%s does not exist' % build_number)
-    if response.status_code >= 400:
-        raise RuntimeError(response.text)
+    try:
+        response = get_url(poll_url, auth=auth)
+    except HTTPError as error:
+        if error.code == 404:
+            build_number = build_url.rstrip('/').rpartition('/')[2]
+            raise HTTPError('Build #%s does not exist' % build_number)
+        raise
 
-    response = response.json()
+    response = json.loads(response.text)
     while True:
         if response.get('result', False):
             result = response['result']
             log('\nThe job ended in', response['result'])
-            ret = (result.lower() == 'success')
+            ret = result.lower() == 'success'
             break
         msg = 'Build %s in progress' % response['displayName']
         show_progress(msg, interval)
-        response = requests.get(poll_url, auth=auth).json()
+        response = get_url(poll_url, auth=auth)
+        response = json.loads(response.text)
     return ret
 
 
@@ -292,16 +398,14 @@ def save_log_to_file(build_url, auth):
     if CONFIG['dump']:
         file = sys.stdout
     else:
-        job_name = build_url[build_url.find('/job/'):]
+        job_name = build_url[build_url.find('/job/') :]
         job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
         log_file = job_name + '.txt'
         file = open(log_file, 'w')
 
     url = build_url + 'consoleText'
-    console_log = requests.get(url, auth=auth, stream=True)
-    console_log.raise_for_status()
-    for block in console_log.iter_content(2048):
-        file.write(block.decode('utf-8'))
+    for block in get_url(url, auth=auth, stream=2048):
+        file.write(block.text.decode('utf-8'))
 
     if not CONFIG['dump']:
         file.close()
