@@ -7,4 +7,5 @@ setup(
     author="Oscar Caballero",
     author_email="ocaballeror@tutanota.com",
     packages=['launch_jenkins'],
+    install_requires=['requests'],
 )
