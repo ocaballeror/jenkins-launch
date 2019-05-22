@@ -5,5 +5,6 @@ setup(
     description="Launch a jenkins job and wait for it to finish",
     version="1.0",
     author="Oscar Caballero",
-    author_email="ocaballeror@tutanota.com"
+    author_email="ocaballeror@tutanota.com",
+    packages=['launch_jenkins'],
 )
