@@ -42,10 +42,19 @@ class FakeResponse:
 
 @pytest.fixture
 def mock_url(monkeypatch):
-    def ret(text):
-        def mock(*args, **kwargs):
-            return FakeResponse(text)
+    def ret(mock_pairs):
+        if not isinstance(mock_pairs, list):
+            mock_pairs = [mock_pairs]
+        mock_pairs = {p.pop('url'): p for p in mock_pairs}
+        _get_url = launch_and_wait.get_url
+
+        def mock(url, *args, **kwargs):
+            if url in mock_pairs:
+                return FakeResponse(**mock_pairs[url])
+            return _get_url(url, *args, **kwargs)
+
         monkeypatch.setattr(launch_and_wait, 'get_url', mock)
+
     return ret
 
 
@@ -140,7 +149,7 @@ def test_optional_flags(monkeypatch):
     ],
 )
 def test_is_parametrized(mock_url, response, expect):
-    mock_url(json.dumps(response))
+    mock_url({'url': url + '/api/json', 'text': json.dumps(response)})
     assert is_parametrized(url, g_auth) == expect
 
 
