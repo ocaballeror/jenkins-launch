@@ -1,9 +1,9 @@
 import sys
 import pytest
 
-import launch_jenkins
-import wait_jenkins
-import launch_and_wait
+from launch_jenkins import launch_and_wait as launch_main
+from launch_jenkins import wait_jenkins
+from launch_jenkins import launch_jenkins
 
 
 call_log = []
@@ -121,16 +121,16 @@ def test_wait_main_invalid_url(monkeypatch):
     assert not call_log
 
 
-def test_launch_and_wait_main(monkeypatch):
+def test_launch_jenkins_main(monkeypatch):
     del call_log[:]
 
-    monkeypatch.setattr(launch_and_wait, 'parse_args', parse_args)
-    monkeypatch.setattr(launch_and_wait, 'launch_build', launch_build)
-    monkeypatch.setattr(launch_and_wait, 'wait_queue_item', wait_queue_item)
-    monkeypatch.setattr(launch_and_wait, 'wait_for_job', wait_for_job)
-    monkeypatch.setattr(launch_and_wait, 'save_log_to_file', save_log_to_file)
+    monkeypatch.setattr(launch_main, 'parse_args', parse_args)
+    monkeypatch.setattr(launch_main, 'launch_build', launch_build)
+    monkeypatch.setattr(launch_main, 'wait_queue_item', wait_queue_item)
+    monkeypatch.setattr(launch_main, 'wait_for_job', wait_for_job)
+    monkeypatch.setattr(launch_main, 'save_log_to_file', save_log_to_file)
 
-    assert launch_and_wait.main() == 0
+    assert launch_main.main() == 0
 
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('launch_build', [build_url, g_auth, params])
@@ -139,11 +139,11 @@ def test_launch_and_wait_main(monkeypatch):
     assert call_log[4] == ('save_log_to_file', [build_url, g_auth])
 
 
-def test_launch_and_wait_main_fail(monkeypatch):
-    monkeypatch.setattr(launch_and_wait, 'parse_args', parse_args)
-    monkeypatch.setattr(launch_and_wait, 'launch_build', launch_build)
-    monkeypatch.setattr(launch_and_wait, 'wait_queue_item', wait_queue_item)
-    monkeypatch.setattr(launch_and_wait, 'wait_for_job', wait_for_job_fail)
-    monkeypatch.setattr(launch_and_wait, 'save_log_to_file', save_log_to_file)
+def test_launch_jenkins_main_fail(monkeypatch):
+    monkeypatch.setattr(launch_main, 'parse_args', parse_args)
+    monkeypatch.setattr(launch_main, 'launch_build', launch_build)
+    monkeypatch.setattr(launch_main, 'wait_queue_item', wait_queue_item)
+    monkeypatch.setattr(launch_main, 'wait_for_job', wait_for_job_fail)
+    monkeypatch.setattr(launch_main, 'save_log_to_file', save_log_to_file)
 
-    assert launch_and_wait.main() == 1
+    assert launch_main.main() == 1

@@ -5,10 +5,10 @@ Launch a jenkins job and wait for it to finish.
 import re
 import sys
 
-from launch_and_wait import parse_args
-from launch_and_wait import parse_job_url
-from launch_and_wait import wait_for_job
-from launch_and_wait import save_log_to_file
+from launch_jenkins import parse_args
+from launch_jenkins import parse_job_url
+from launch_jenkins import wait_for_job
+from launch_jenkins import save_log_to_file
 
 
 def main():
