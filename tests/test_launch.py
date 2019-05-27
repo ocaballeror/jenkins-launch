@@ -195,24 +195,34 @@ def test_parse_job_url_error(job_url):
     assert 'invalid job url' in str(error.value).lower()
 
 
-def test_build_no_params(requests_mock):
+def test_build_no_params(mock_url):
     headers = {'Location': 'some queue'}
-    requests_mock.post(url + '/build', headers=headers)
+    mock_url(
+        [
+            # Return build location
+            dict(url=url + '/build', headers=headers),
+            # Set build properties as not parametrized
+            dict(url=url + '/api/json', text='{}'),
+        ]
+    )
 
-    # Set build properties as not parametrized
-    requests_mock.get(url + '/api/json', text='{}')
     # Launch build
     assert launch_build(url, g_auth, {}) == 'some queue'
 
 
-def test_build_with_params(requests_mock):
+def test_build_with_params(mock_url):
     headers = {'Location': 'param queue'}
-    requests_mock.post(url + '/buildWithParameters', headers=headers)
 
     # Set build properties as parametrized
     props = {'property': [{'parameterDefinitions': ['thing']}]}
     props = json.dumps(props)
-    requests_mock.get(url + '/api/json', text=props)
+
+    mock_url(
+        [
+            dict(url=url + '/buildWithParameters', headers=headers),
+            dict(url=url + '/api/json', text=props),
+        ]
+    )
 
     # Launch parametrized build
     assert launch_build(url, g_auth) == 'param queue'
@@ -230,38 +240,46 @@ def test_build_unparametrized_with_params(monkeypatch):
         assert 'parameters' in str(error)
 
 
-def test_launch_error(requests_mock):
-    requests_mock.get(url + '/api/json', text='{}')
-    requests_mock.post(url + '/build', status_code=400)
+def test_launch_error(mock_url):
+    mock_url(
+        [
+            dict(url=url + '/api/json', text='{}'),
+            dict(url=url + '/build', status_code=400),
+        ]
+    )
 
     with pytest.raises(RuntimeError):
         launch_build(url, g_auth)
 
 
-def test_launch_error_no_queue(requests_mock):
+def test_launch_error_no_queue(mock_url):
     headers = {'Header': 'value'}
-    requests_mock.post(url + '/build', headers=headers)
-    requests_mock.get(url + '/api/json', text='{}')
+    mock_url(
+        [
+            dict(url=url + '/build', headers=headers),
+            dict(url=url + '/api/json', text='{}'),
+        ]
+    )
 
     # Response has no location header
     with pytest.raises(AssertionError):
         launch_build(url, g_auth, {})
 
     headers = {'Location': 'this is not the word you are looking for'}
-    requests_mock.post(url + '/build', headers=headers)
+    mock_url(dict(url=url + '/build', headers=headers))
     # Location has no queue url
     with pytest.raises(AssertionError):
         launch_build(url, g_auth, {})
 
 
-def test_wait_queue_item(requests_mock):
+def test_wait_queue_item(mock_url):
     def set_finished():
         time.sleep(0.5)
         resp = {'executable': {'url': 'some url'}}
         resp = json.dumps(resp)
-        requests_mock.get(url + '/api/json', text=resp)
+        mock_url(dict(url=url + '/api/json', text=resp))
 
-    requests_mock.get(url + '/api/json', text='{}')
+    mock_url(dict(url=url + '/api/json', text='{}'))
     Thread(target=set_finished).start()
 
     t0 = time.time()
@@ -269,15 +287,15 @@ def test_wait_queue_item(requests_mock):
     assert time.time() - t0 >= 0.5
 
 
-def test_wait_for_job(requests_mock):
+def test_wait_for_job(mock_url):
     def set_finished():
         time.sleep(0.5)
         resp = {'result': 'success', 'displayName': 'name'}
         resp = json.dumps(resp)
-        requests_mock.get(url + '/api/json', text=resp)
+        mock_url(dict(url=url + '/api/json', text=resp))
 
     resp = {'displayName': 'name'}
-    requests_mock.get(url + '/api/json', text=json.dumps(resp))
+    mock_url(dict(url=url + '/api/json', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
     t0 = time.time()
@@ -285,7 +303,7 @@ def test_wait_for_job(requests_mock):
     assert time.time() - t0 >= 0.5
 
 
-def test_wait_for_job_fail(requests_mock):
+def test_wait_for_job_fail(mock_url):
     """
     Check that wait_for_job returns False on any build result other than
     "success".
@@ -295,19 +313,19 @@ def test_wait_for_job_fail(requests_mock):
         time.sleep(0.5)
         resp = {'result': 'failure', 'displayName': 'name'}
         resp = json.dumps(resp)
-        requests_mock.get(url + '/api/json', text=resp)
+        mock_url(dict(url=url + '/api/json', text=resp))
 
     resp = {'displayName': 'name'}
-    requests_mock.get(url + '/api/json', text=json.dumps(resp))
+    mock_url(dict(url=url + '/api/json', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
     assert not wait_for_job(url, g_auth, 0.2)
 
 
-def test_save_log_to_file(requests_mock):
+def test_save_log_to_file(mock_url):
     content = 'some log content here'
     filename = 'thing_other_master.txt'
-    requests_mock.get(url + '/consoleText', text=content)
+    mock_url(dict(url=url + '/consoleText', text=content))
     try:
         save_log_to_file(url, g_auth)
         assert os.path.isfile(filename)
@@ -317,13 +335,13 @@ def test_save_log_to_file(requests_mock):
             os.remove(filename)
 
 
-def test_dump_log_stdout(requests_mock, monkeypatch, capsys):
+def test_dump_log_stdout(mock_url, monkeypatch, capsys):
     config = launch_and_wait.CONFIG.copy()
     config['dump'] = True
     monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
 
     content = 'job output goes\n here'
-    requests_mock.get(url + '/consoleText', text=content)
+    mock_url(dict(url=url + '/consoleText', text=content))
     save_log_to_file(url, g_auth)
     out = capsys.readouterr()
     assert out.out == content
