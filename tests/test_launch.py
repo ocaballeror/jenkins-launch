@@ -109,6 +109,23 @@ def test_parse_incomplete_args(monkeypatch, args):
         parse_args()
 
 
+@pytest.mark.parametrize(
+    'args',
+    [
+        ['--launch-only', '--wait-only']
+    ],
+    ids=[
+        'Launch only and wait only'
+    ]
+)
+def test_parse_incompatible_args(monkeypatch, args):
+    new_argv = ['python'] + g_params + args
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    with pytest.raises(SystemExit) as error:
+        parse_args()
+        assert 'not allowed with argument' in str(error.value)
+
+
 def test_basic_argv(monkeypatch):
     new_argv = ['python'] + g_params
     monkeypatch.setattr(sys, 'argv', new_argv)
@@ -155,6 +172,24 @@ def test_optional_flags(monkeypatch):
         assert launch_jenkins.CONFIG['dump']
         assert launch_jenkins.CONFIG['quiet']
         assert launch_jenkins.CONFIG['progress']
+    finally:
+        launch_jenkins.CONFIG = config
+
+
+@pytest.mark.parametrize('arg, expect', [
+    ('', 'full'),
+    ('-l', 'launch'),
+    ('-w', 'wait'),
+], ids=['full', 'launch only', 'wait only'])
+def test_launch_wait_only(arg, expect, monkeypatch):
+    new_argv = ['python'] + g_params
+    if arg:
+        new_argv += [arg]
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    config = launch_jenkins.CONFIG.copy()
+    try:
+        parse_args()
+        assert launch_jenkins.CONFIG['mode'] == expect
     finally:
         launch_jenkins.CONFIG = config
 
