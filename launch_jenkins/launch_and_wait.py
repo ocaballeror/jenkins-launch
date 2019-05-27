@@ -58,7 +58,7 @@ def parse_kwarg(kwarg):
     return kwarg.split('=', 1)
 
 
-def parse_args(verify_url=True):
+def parse_args():
     """
     Parse command line arguments and return a tuple with the relevant
     parameters. The tuple will be of type (url, auth, params), with the full
@@ -114,13 +114,12 @@ def parse_args(verify_url=True):
     CONFIG['dump'] = args.dump
     CONFIG['quiet'] = args.quiet
     CONFIG['progress'] = args.progress
-    CONFIG['mode'] = 'full'
     if args.launch_only:
         CONFIG['mode'] = 'launch'
     elif args.wait_only:
         CONFIG['mode'] = 'wait'
 
-    if verify_url:
+    if not args.wait_only:
         job, params = parse_job_url(args.job)
         params += args.params
     else:
@@ -425,11 +424,10 @@ def main():
     """
     Launch a Jenkins build and wait for it to finish.
     """
-    wait_only = (CONFIG['mode'] == 'wait')
-    launch_params = parse_args(verify_url=wait_only)
+    launch_params = parse_args()
     build_url, auth, _ = launch_params
 
-    if wait_only:
+    if CONFIG['mode'] == 'wait':
         job_url, _, number = build_url.rstrip('/').rpartition('/')
         if not re.search(r'^\d+$', number):
             raise ValueError(
