@@ -47,11 +47,11 @@ python launch_and_wait.py -j 'http://your.jenkins.instance:8080/job/whatever/job
 python launch_and_wait.py -q --dump -j 'http://your.jenkins.instance:8080/job/whatever/job/master' -u username -t token param1=value param2=another_value
 
 # Only launch the job and exit when it starts executing. The only output is the URL of the running build.
-$ python launch_jenkins.py -q -j http://your.jenkins.instance:8080/job/whatever/job/master -u ...
+python launch_jenkins.py -q -j http://your.jenkins.instance:8080/job/whatever/job/master -u ...
 http://your.jenkins.instance:8080/job/whatever/job/master/
 
 # Wait for a running build to finish and get its output.
-$ python launch_jenkins.py -q --dump -j http://your.jenkins.instance:8080/job/whatever/job/master/62 -u ...
+python launch_jenkins.py -q --dump -j http://your.jenkins.instance:8080/job/whatever/job/master/62 -u ...
 
 Obtained Jenkinsfile from 6ea258a9f90ed662a48882f9e2cee68713d053b3
 Running in Durability level: MAX_SURVIVABILITY
