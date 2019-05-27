@@ -384,9 +384,7 @@ def test_save_log_to_file(mock_url):
 
 
 def test_dump_log_stdout(mock_url, monkeypatch, capsys):
-    config = launch_jenkins.CONFIG.copy()
-    config['dump'] = True
-    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'dump', True)
 
     content = 'job output goes\n here'
     mock_url(dict(url=url + '/consoleText', text=content))
@@ -489,9 +487,7 @@ def test_show_progress_force(capsys, monkeypatch, terminal_size):
     is not technically capable.
     """
     # Force progress through config
-    config = launch_jenkins.CONFIG.copy()
-    config['progress'] = True
-    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'progress', True)
 
     # Set all the right conditions
     monkeypatch.setattr(sys, 'platform', 'notwin32')
@@ -520,7 +516,5 @@ def test_no_progress_quiet(capsys, monkeypatch, terminal_size):
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
     assert is_progressbar_capable()
 
-    config = launch_jenkins.CONFIG.copy()
-    config['quiet'] = True
-    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'quiet', True)
     assert_empty_progress(capsys)
