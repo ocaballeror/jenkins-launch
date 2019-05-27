@@ -10,7 +10,7 @@ from threading import Thread
 import pytest
 
 
-import launch_jenkins.launch_and_wait as launch_jenkins
+from launch_jenkins import launch_jenkins
 from launch_jenkins import is_parametrized
 from launch_jenkins import launch_build
 from launch_jenkins import wait_queue_item
