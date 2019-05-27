@@ -159,21 +159,17 @@ def test_argv_params_wrong_format(monkeypatch, params, capsys):
     assert 'use key=value format' in err
 
 
-def test_optional_flags(monkeypatch):
+def test_optional_flags(monkeypatch, config):
     """
     Check that the known optional flags are accepted.
     """
     params = ['-q', '--dump', '--progress']
     new_argv = ['python'] + g_params + params
     monkeypatch.setattr(sys, 'argv', new_argv)
-    config = launch_jenkins.CONFIG.copy()
-    try:
-        parse_args()
-        assert launch_jenkins.CONFIG['dump']
-        assert launch_jenkins.CONFIG['quiet']
-        assert launch_jenkins.CONFIG['progress']
-    finally:
-        launch_jenkins.CONFIG = config
+    parse_args()
+    assert launch_jenkins.CONFIG['dump']
+    assert launch_jenkins.CONFIG['quiet']
+    assert launch_jenkins.CONFIG['progress']
 
 
 @pytest.mark.parametrize('arg, expect', [
@@ -181,17 +177,13 @@ def test_optional_flags(monkeypatch):
     ('-l', 'launch'),
     ('-w', 'wait'),
 ], ids=['full', 'launch only', 'wait only'])
-def test_launch_wait_only(arg, expect, monkeypatch):
+def test_launch_wait_only(arg, expect, monkeypatch, config):
     new_argv = ['python'] + g_params
     if arg:
         new_argv += [arg]
     monkeypatch.setattr(sys, 'argv', new_argv)
-    config = launch_jenkins.CONFIG.copy()
-    try:
-        parse_args()
-        assert launch_jenkins.CONFIG['mode'] == expect
-    finally:
-        launch_jenkins.CONFIG = config
+    parse_args()
+    assert launch_jenkins.CONFIG['mode'] == expect
 
 
 @pytest.mark.parametrize(
