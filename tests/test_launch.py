@@ -20,6 +20,7 @@ from launch_and_wait import parse_args
 from launch_and_wait import parse_job_url
 from launch_and_wait import get_stderr_size_unix
 from launch_and_wait import is_progressbar_capable
+from launch_and_wait import HTTPError
 
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
@@ -58,9 +59,22 @@ def mock_url(monkeypatch):
         _get_url = launch_and_wait.get_url
 
         def mock(url, *args, **kwargs):
-            if url in mock_pairs:
-                return FakeResponse(**mock_pairs[url])
-            return _get_url(url, *args, **kwargs)
+            resp = mock_pairs.get(url, None)
+            if not resp:
+                return _get_url(url, *args, **kwargs)
+
+            resp['text'] = resp.get('text', '')
+            resp['headers'] = resp.get('headers', {})
+            resp['status_code'] = resp.get('status_code', 200)
+            if resp['status_code'] >= 400:
+                raise HTTPError(
+                    url,
+                    resp['status_code'],
+                    resp['text'],
+                    resp['headers'],
+                    None,
+                )
+            return FakeResponse(**resp)
 
         monkeypatch.setattr(launch_and_wait, 'get_url', mock)
 
@@ -257,7 +271,7 @@ def test_launch_error(mock_url):
         ]
     )
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(HTTPError):
         launch_build(url, g_auth)
 
 
