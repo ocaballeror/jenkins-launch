@@ -27,7 +27,7 @@ else:
     from collections import Mapping, MutableMapping  # noqa:F401
 
 
-CONFIG = {'dump': False, 'quiet': False, 'progress': False}
+CONFIG = {'dump': False, 'quiet': False, 'progress': False, 'mode': 'full'}
 
 
 def log(*args, **kwargs):
@@ -95,11 +95,30 @@ def parse_args(verify_url=True):
         help='(Optional) A list of parameters in the form key=value',
         nargs='*',
     )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        '-l',
+        '--launch-only',
+        help='Only launch the build. Exit when it starts running',
+        action='store_true',
+    )
+    group.add_argument(
+        '-w',
+        '--wait-only',
+        help='Interpret the job url as an already running build '
+        'and wait for it to finish',
+        action='store_true',
+    )
     args = parser.parse_args()
 
     CONFIG['dump'] = args.dump
     CONFIG['quiet'] = args.quiet
     CONFIG['progress'] = args.progress
+    CONFIG['mode'] = 'full'
+    if args.launch_only:
+        CONFIG['mode'] = 'launch'
+    elif args.wait_only:
+        CONFIG['mode'] = 'wait'
 
     if verify_url:
         job, params = parse_job_url(args.job)
@@ -415,10 +434,26 @@ def main():
     """
     Launch a Jenkins build and wait for it to finish.
     """
-    launch_params = parse_args()
-    auth = launch_params[1]
-    location = launch_build(*launch_params)
-    build_url = wait_queue_item(location, auth)
+    wait_only = (CONFIG['mode'] == 'wait')
+    launch_params = parse_args(verify_url=wait_only)
+    build_url, auth, _ = launch_params
+
+    if wait_only:
+        job_url, _, number = build_url.rstrip('/').rpartition('/')
+        if not re.search(r'^\d+$', number):
+            raise ValueError(
+                "This url doesn't look like a valid build. Make sure \
+    there is a build number at the end."
+            )
+        parse_job_url(job_url)
+    else:
+        location = launch_build(*launch_params)
+        build_url = wait_queue_item(location, auth)
+
+    if CONFIG['mode'] == 'launch':
+        print(build_url)
+        return 0
+
     result = wait_for_job(build_url, auth)
     save_log_to_file(build_url, auth)
     return int(not result)
