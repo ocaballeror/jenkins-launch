@@ -8,4 +8,9 @@ setup(
     author_email="ocaballeror@tutanota.com",
     packages=['launch_jenkins'],
     install_requires=['requests'],
+    entry_points={
+        'console_scripts': [
+            'launch_jenkins=launch_jenkins.launch_jenkins:main'
+        ]
+    },
 )
