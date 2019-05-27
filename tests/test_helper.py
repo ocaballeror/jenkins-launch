@@ -4,7 +4,7 @@ from collections import namedtuple
 
 import pytest
 
-from launch_and_wait import show_progress
+from launch_jenkins import show_progress
 
 
 def assert_progressbar(capsys):

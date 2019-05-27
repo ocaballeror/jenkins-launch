@@ -10,17 +10,17 @@ from threading import Thread
 import pytest
 
 
-import launch_and_wait
-from launch_and_wait import is_parametrized
-from launch_and_wait import launch_build
-from launch_and_wait import wait_queue_item
-from launch_and_wait import wait_for_job
-from launch_and_wait import save_log_to_file
-from launch_and_wait import parse_args
-from launch_and_wait import parse_job_url
-from launch_and_wait import get_stderr_size_unix
-from launch_and_wait import is_progressbar_capable
-from launch_and_wait import HTTPError
+import launch_jenkins.launch_and_wait as launch_jenkins
+from launch_jenkins import is_parametrized
+from launch_jenkins import launch_build
+from launch_jenkins import wait_queue_item
+from launch_jenkins import wait_for_job
+from launch_jenkins import save_log_to_file
+from launch_jenkins import parse_args
+from launch_jenkins import parse_job_url
+from launch_jenkins import get_stderr_size_unix
+from launch_jenkins import is_progressbar_capable
+from launch_jenkins import HTTPError
 
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
@@ -56,7 +56,7 @@ def mock_url(monkeypatch):
         if not isinstance(mock_pairs, list):
             mock_pairs = [mock_pairs]
         mock_pairs = {p.pop('url'): p for p in mock_pairs}
-        _get_url = launch_and_wait.get_url
+        _get_url = launch_jenkins.get_url
 
         def mock(url, *args, **kwargs):
             resp = mock_pairs.get(url, None)
@@ -76,7 +76,7 @@ def mock_url(monkeypatch):
                 )
             return FakeResponse(**resp)
 
-        monkeypatch.setattr(launch_and_wait, 'get_url', mock)
+        monkeypatch.setattr(launch_jenkins, 'get_url', mock)
 
     return ret
 
@@ -149,14 +149,14 @@ def test_optional_flags(monkeypatch):
     params = ['-q', '--dump', '--progress']
     new_argv = ['python'] + g_params + params
     monkeypatch.setattr(sys, 'argv', new_argv)
-    config = launch_and_wait.CONFIG.copy()
+    config = launch_jenkins.CONFIG.copy()
     try:
         parse_args()
-        assert launch_and_wait.CONFIG['dump']
-        assert launch_and_wait.CONFIG['quiet']
-        assert launch_and_wait.CONFIG['progress']
+        assert launch_jenkins.CONFIG['dump']
+        assert launch_jenkins.CONFIG['quiet']
+        assert launch_jenkins.CONFIG['progress']
     finally:
-        launch_and_wait.CONFIG = config
+        launch_jenkins.CONFIG = config
 
 
 @pytest.mark.parametrize(
@@ -255,7 +255,7 @@ def test_build_unparametrized_with_params(monkeypatch):
     Check that an error is raised when the user passes parameters to a
     non-parametrized job.
     """
-    monkeypatch.setattr(launch_and_wait, 'is_parametrized', lambda x, y: False)
+    monkeypatch.setattr(launch_jenkins, 'is_parametrized', lambda x, y: False)
     with pytest.raises(RuntimeError) as error:
         launch_build(url, g_auth, params={'key': 'value'})
         assert 'parameters' in str(error)
@@ -357,9 +357,9 @@ def test_save_log_to_file(mock_url):
 
 
 def test_dump_log_stdout(mock_url, monkeypatch, capsys):
-    config = launch_and_wait.CONFIG.copy()
+    config = launch_jenkins.CONFIG.copy()
     config['dump'] = True
-    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
+    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
 
     content = 'job output goes\n here'
     mock_url(dict(url=url + '/consoleText', text=content))
@@ -451,7 +451,7 @@ def test_show_progress_no_get_size(capsys, monkeypatch):
     """
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
-    monkeypatch.setattr(launch_and_wait, 'get_stderr_size_unix', raise_error)
+    monkeypatch.setattr(launch_jenkins, 'get_stderr_size_unix', raise_error)
     assert not is_progressbar_capable()
     assert_no_progressbar(capsys)
 
@@ -462,9 +462,9 @@ def test_show_progress_force(capsys, monkeypatch, terminal_size):
     is not technically capable.
     """
     # Force progress through config
-    config = launch_and_wait.CONFIG.copy()
+    config = launch_jenkins.CONFIG.copy()
     config['progress'] = True
-    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
+    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
 
     # Set all the right conditions
     monkeypatch.setattr(sys, 'platform', 'notwin32')
@@ -480,7 +480,7 @@ def test_show_progress_force(capsys, monkeypatch, terminal_size):
     with monkeypatch.context():
         # Even force is set, we can't progress bar without stderr size
         monkeypatch.setattr(
-            launch_and_wait, 'get_stderr_size_unix', raise_error
+            launch_jenkins, 'get_stderr_size_unix', raise_error
         )
         assert not is_progressbar_capable()
 
@@ -493,7 +493,7 @@ def test_no_progress_quiet(capsys, monkeypatch, terminal_size):
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
     assert is_progressbar_capable()
 
-    config = launch_and_wait.CONFIG.copy()
+    config = launch_jenkins.CONFIG.copy()
     config['quiet'] = True
-    monkeypatch.setattr(launch_and_wait, 'CONFIG', config)
+    monkeypatch.setattr(launch_jenkins, 'CONFIG', config)
     assert_empty_progress(capsys)

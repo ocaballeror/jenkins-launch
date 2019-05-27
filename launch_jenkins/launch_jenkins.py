@@ -3,9 +3,9 @@
 Launch a jenkins job and wait for it to finish.
 """
 import sys
-from launch_and_wait import parse_args
-from launch_and_wait import launch_build
-from launch_and_wait import wait_queue_item
+from launch_jenkins import parse_args
+from launch_jenkins import launch_build
+from launch_jenkins import wait_queue_item
 
 
 def main():
