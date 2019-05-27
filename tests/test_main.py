@@ -1,7 +1,7 @@
 import sys
 import pytest
 
-from launch_jenkins import launch_and_wait as launch_jenkins
+from launch_jenkins import launch_jenkins
 
 
 call_log = []
