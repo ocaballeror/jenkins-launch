@@ -1,9 +1,7 @@
 import sys
 import pytest
 
-from launch_jenkins import launch_and_wait as launch_main
-from launch_jenkins import wait_jenkins
-from launch_jenkins import launch_jenkins
+from launch_jenkins import launch_and_wait as launch_jenkins
 
 
 call_log = []
@@ -14,41 +12,74 @@ queue_item = job_url + '/queue/item/1/'
 build_url = job_url + '/1/'
 
 
-def parse_args(*args, **kwargs):
-    call_log.append(('parse_args', []))
-    return build_url, g_auth, params
+@pytest.fixture
+def parse_args(monkeypatch):
+    def mock(*args, **kwargs):
+        call_log.append(('parse_args', []))
+        return build_url, g_auth, params
+
+    monkeypatch.setattr(launch_jenkins, 'parse_args', mock)
 
 
-def launch_build(*args):
-    call_log.append(('launch_build', list(args)))
-    return queue_item
+@pytest.fixture
+def launch_build(monkeypatch):
+    def mock(*args, **kwargs):
+        call_log.append(('launch_build', list(args)))
+        return queue_item
+
+    monkeypatch.setattr(launch_jenkins, 'launch_build', mock)
 
 
-def wait_queue_item(location, auth):
-    call_log.append(('wait_queue_item', [location, auth]))
-    return build_url
+@pytest.fixture
+def wait_queue_item(monkeypatch):
+    def mock(location, auth):
+        call_log.append(('wait_queue_item', [location, auth]))
+        return build_url
+
+    monkeypatch.setattr(launch_jenkins, 'wait_queue_item', mock)
 
 
-def wait_for_job(build_url, auth):
-    call_log.append(('wait_for_job', [build_url, auth]))
-    return True
+@pytest.fixture
+def wait_for_job(monkeypatch):
+    def mock(build_url, auth):
+        call_log.append(('wait_for_job', [build_url, auth]))
+        return True
+
+    monkeypatch.setattr(launch_jenkins, 'wait_for_job', mock)
 
 
-def wait_for_job_fail(build_url, auth):
-    call_log.append(('wait_for_job', [build_url, auth]))
-    return False
+@pytest.fixture
+def wait_for_job_fail(monkeypatch):
+    def mock(build_url, auth):
+        call_log.append(('wait_for_job', [build_url, auth]))
+        return False
+
+    monkeypatch.setattr(launch_jenkins, 'wait_for_job', mock)
 
 
-def save_log_to_file(build_url, auth):
-    call_log.append(('save_log_to_file', [build_url, auth]))
+@pytest.fixture
+def save_log_to_file(monkeypatch):
+    def mock(build_url, auth):
+        call_log.append(('save_log_to_file', [build_url, auth]))
+
+    monkeypatch.setattr(launch_jenkins, 'save_log_to_file', mock)
 
 
-def test_launch_main(monkeypatch):
+@pytest.fixture
+def launch_only(monkeypatch):
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'mode', 'launch')
+
+
+@pytest.fixture
+def wait_only(monkeypatch):
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'mode', 'wait')
+
+
+@pytest.mark.usefixtures(
+    'parse_args', 'launch_build', 'wait_queue_item', 'launch_only'
+)
+def test_launch_only():
     del call_log[:]
-
-    monkeypatch.setattr(launch_jenkins, 'parse_args', parse_args)
-    monkeypatch.setattr(launch_jenkins, 'launch_build', launch_build)
-    monkeypatch.setattr(launch_jenkins, 'wait_queue_item', wait_queue_item)
 
     launch_jenkins.main()
     assert call_log[0] == ('parse_args', [])
@@ -56,19 +87,19 @@ def test_launch_main(monkeypatch):
     assert call_log[2] == ('wait_queue_item', [queue_item, g_auth])
 
 
-def test_wait_main(monkeypatch):
+@pytest.mark.usefixtures(
+    'parse_args', 'wait_for_job', 'save_log_to_file', 'wait_only'
+)
+def test_wait_only():
     del call_log[:]
 
-    new_argv = [__file__, '-j', build_url, '-u', g_auth[0], '-t', g_auth[1]]
-    monkeypatch.setattr(sys, 'argv', new_argv)
-    monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
-    monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
-
-    assert wait_jenkins.main() == 0
-    assert call_log[0] == ('wait_for_job', [build_url, g_auth])
-    assert call_log[1] == ('save_log_to_file', [build_url, g_auth])
+    assert launch_jenkins.main() == 0
+    assert call_log[0] == ('parse_args', [])
+    assert call_log[1] == ('wait_for_job', [build_url, g_auth])
+    assert call_log[2] == ('save_log_to_file', [build_url, g_auth])
 
 
+@pytest.mark.usefixtures('wait_for_job', 'save_log_to_file', 'wait_only')
 def test_wait_main_invalid_build(monkeypatch):
     """
     Run the main function in wait_jenkins.py, but give it the url of a pipeline
@@ -80,22 +111,20 @@ def test_wait_main_invalid_build(monkeypatch):
 
     new_argv = [__file__, '-j', job_url, '-u', g_auth[0], '-t', g_auth[1]]
     monkeypatch.setattr(sys, 'argv', new_argv)
-    monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
-    monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
 
     with pytest.raises(ValueError):
-        wait_jenkins.main()
+        launch_jenkins.main()
     assert not call_log
 
 
-def test_wait_main_fail(monkeypatch):
-    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args)
-    monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job_fail)
-    monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
+@pytest.mark.usefixtures(
+    'parse_args', 'wait_for_job_fail', 'save_log_to_file', 'wait_only'
+)
+def test_wait_main_fail():
+    assert launch_jenkins.main() == 1
 
-    assert wait_jenkins.main() == 1
 
-
+@pytest.mark.usefixtures('wait_for_job', 'save_log_to_file', 'wait_only')
 def test_wait_main_invalid_url(monkeypatch):
     del call_log[:]
 
@@ -107,30 +136,28 @@ def test_wait_main_invalid_url(monkeypatch):
         "Return something that's not even a url."
         return 'asdfasdf', g_auth, params
 
-    monkeypatch.setattr(wait_jenkins, 'wait_for_job', wait_for_job)
-    monkeypatch.setattr(wait_jenkins, 'save_log_to_file', save_log_to_file)
-
-    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args_invalid)
+    monkeypatch.setattr(launch_jenkins, 'parse_args', parse_args_invalid)
     with pytest.raises(ValueError):
-        wait_jenkins.main()
+        launch_jenkins.main()
     assert not call_log
 
-    monkeypatch.setattr(wait_jenkins, 'parse_args', parse_args_job_url)
+    monkeypatch.setattr(launch_jenkins, 'parse_args', parse_args_job_url)
     with pytest.raises(ValueError):
-        wait_jenkins.main()
+        launch_jenkins.main()
     assert not call_log
 
 
+@pytest.mark.usefixtures(
+    'parse_args',
+    'launch_build',
+    'wait_queue_item',
+    'wait_for_job',
+    'save_log_to_file',
+)
 def test_launch_jenkins_main(monkeypatch):
     del call_log[:]
 
-    monkeypatch.setattr(launch_main, 'parse_args', parse_args)
-    monkeypatch.setattr(launch_main, 'launch_build', launch_build)
-    monkeypatch.setattr(launch_main, 'wait_queue_item', wait_queue_item)
-    monkeypatch.setattr(launch_main, 'wait_for_job', wait_for_job)
-    monkeypatch.setattr(launch_main, 'save_log_to_file', save_log_to_file)
-
-    assert launch_main.main() == 0
+    assert launch_jenkins.main() == 0
 
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('launch_build', [build_url, g_auth, params])
@@ -139,11 +166,12 @@ def test_launch_jenkins_main(monkeypatch):
     assert call_log[4] == ('save_log_to_file', [build_url, g_auth])
 
 
+@pytest.mark.usefixtures(
+    'parse_args',
+    'launch_build',
+    'wait_queue_item',
+    'wait_for_job_fail',
+    'save_log_to_file',
+)
 def test_launch_jenkins_main_fail(monkeypatch):
-    monkeypatch.setattr(launch_main, 'parse_args', parse_args)
-    monkeypatch.setattr(launch_main, 'launch_build', launch_build)
-    monkeypatch.setattr(launch_main, 'wait_queue_item', wait_queue_item)
-    monkeypatch.setattr(launch_main, 'wait_for_job', wait_for_job_fail)
-    monkeypatch.setattr(launch_main, 'save_log_to_file', save_log_to_file)
-
-    assert launch_main.main() == 1
+    assert launch_jenkins.main() == 1
