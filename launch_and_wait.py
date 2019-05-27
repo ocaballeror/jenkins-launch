@@ -190,6 +190,7 @@ def show_progress(msg, duration):
         time.sleep(0.1)
         elapsed += 0.1
 
+
 class CaseInsensitiveDict(MutableMapping):
     """A case-insensitive ``dict``-like object.
 
@@ -243,9 +244,7 @@ class CaseInsensitiveDict(MutableMapping):
     def lower_items(self):
         """Like iteritems(), but with all lowercase keys."""
         return (
-            (lowerkey, keyval[1])
-            for (lowerkey, keyval)
-            in self._store.items()
+            (lowerkey, keyval[1]) for (lowerkey, keyval) in self._store.items()
         )
 
     def __eq__(self, other):

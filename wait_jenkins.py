@@ -19,8 +19,10 @@ def main():
     build_url, auth, _ = launch_params
     job_url, _, number = build_url.rstrip('/').rpartition('/')
     if not re.search(r'^\d+$', number):
-        raise ValueError("This url doesn't look like a valid build. Make sure \
-there is a build number at the end.")
+        raise ValueError(
+            "This url doesn't look like a valid build. Make sure \
+there is a build number at the end."
+        )
     parse_job_url(job_url)
     result = wait_for_job(build_url, auth)
     save_log_to_file(build_url, auth)

@@ -54,6 +54,7 @@ def terminal_size(monkeypatch):
     """
     Set a fake os.get_terminal_size() function that returns (30, 30).
     """
+
     def fake_terminal_size(*args, **kwargs):
         return Size(30, 30)
 
