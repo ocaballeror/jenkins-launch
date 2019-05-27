@@ -2,10 +2,6 @@
 
 Script to launch a Jenkins build and wait for it to finish.
 
-The main script here is `launch_and_wait.py`. Two additional helper scripts are
-provided (`launch_jenkins.py` and `wait_jenkins.py`) to only launch or only
-wait for a build, respectively. The cli options are the same for all of them.
-
 ## Execution
 
 ##### Build output
@@ -33,25 +29,31 @@ If your build takes parameters, you can pass them to the script as a list of `ke
 * `--dump`
     * Description: Dump build output to stdout instead of saving to a file
     * Required: no
+* `-l / --launch-only`
+    * Description: Only launch the new job and exist when it starts running
+	* Conflicts: `-w`
+* `-w / --wait-only`
+    * Description: Wait until the running build pointed at by `-j` finishes running
+	* Conflicts: `-l`
 
 ## Examples
 
 ```sh
 # Basic build launch
-python launch_and_wait.py -j 'http://your.jenkins.instance:8080/job/whatever/job/master' -u username -t token
+python launch_jenkins.py -j 'http://your.jenkins.instance:8080/job/whatever/job/master' -u username -t token
 
 # Launch build with parameters
-python launch_and_wait.py -j 'http://your.jenkins.instance:8080/job/whatever/job/master' -u username -t token param1=value 'param2=another value'
+python launch_jenkins.py -j 'http://your.jenkins.instance:8080/job/whatever/job/master' -u username -t token param1=value 'param2=another value'
 
 # Script-ready execution. Prints no user messages, and dumps the job output to stdout
-python launch_and_wait.py -q --dump -j 'http://your.jenkins.instance:8080/job/whatever/job/master' -u username -t token param1=value param2=another_value
+python launch_jenkins.py -q --dump -j 'http://your.jenkins.instance:8080/job/whatever/job/master' -u username -t token param1=value param2=another_value
 
 # Only launch the job and exit when it starts executing. The only output is the URL of the running build.
-python launch_jenkins.py -q -j http://your.jenkins.instance:8080/job/whatever/job/master -u ...
+python launch_jenkins.py -q --launch-only -j http://your.jenkins.instance:8080/job/whatever/job/master -u ...
 http://your.jenkins.instance:8080/job/whatever/job/master/
 
-# Wait for a running build to finish and get its output.
-python launch_jenkins.py -q --dump -j http://your.jenkins.instance:8080/job/whatever/job/master/62 -u ...
+# Wait for a running build to finish and get its output. Note that the url corresponds to a specific build (number 62)
+python launch_jenkins.py -q --wait-only --dump -j http://your.jenkins.instance:8080/job/whatever/job/master/62 -u ...
 
 Obtained Jenkinsfile from 6ea258a9f90ed662a48882f9e2cee68713d053b3
 Running in Durability level: MAX_SURVIVABILITY
