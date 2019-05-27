@@ -318,9 +318,7 @@ def is_parametrized(url, auth):
     """
     Determine if the build is parametrized or not.
     """
-    if url[-1] != '/':
-        url += '/'
-    url += 'api/json'
+    url = url.rstrip('/') + '/api/json'
 
     response = get_url(url, auth=auth)
     response = json.loads(response.text)
@@ -334,8 +332,7 @@ def launch_build(url, auth, params=None):
     """
     Submit job and return the queue item location.
     """
-    if url[-1] != '/':
-        url += '/'
+    url = url.rstrip('/') + '/'
     has_params = is_parametrized(url, auth)
     if params and not has_params:
         raise RuntimeError("This build doesn't accept any parameters")
@@ -359,9 +356,7 @@ def wait_queue_item(location, auth, interval=5.0):
     """
     Wait until the item starts building.
     """
-    if location[-1] != '/':
-        location += '/'
-    queue = location + 'api/json'
+    queue = location.rstrip('/') + '/api/json'
     while True:
         response = get_url(queue, auth=auth)
         response = json.loads(response.text)
@@ -380,11 +375,8 @@ def wait_for_job(build_url, auth, interval=5.0):
     """
     Wait until the build finishes.
     """
-    if build_url[-1] != '/':
-        build_url += '/'
-
     ret = 0
-    poll_url = build_url + 'api/json'
+    poll_url = build_url.rstrip('/') + '/api/json'
     try:
         response = get_url(poll_url, auth=auth)
     except HTTPError as error:
@@ -411,8 +403,7 @@ def save_log_to_file(build_url, auth):
     """
     Save the build log to a file.
     """
-    if build_url[-1] != '/':
-        build_url += '/'
+    build_url = build_url.rstrip('/') + '/'
     if CONFIG['dump']:
         file = sys.stdout
     else:
