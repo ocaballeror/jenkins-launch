@@ -34,9 +34,11 @@ g_params = ['-j', url, '-u', g_auth[0], '-t', g_auth[1]]
 
 
 class FakeResponse:
-    def __init__(self, text='', headers=None):
+    def __init__(self, text='', headers=None, status_code=200):
         self.text = text
         self.headers = headers or {}
+        self.status_code = status_code
+
 
 @pytest.fixture
 def mock_url(monkeypatch):
