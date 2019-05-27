@@ -39,6 +39,15 @@ class FakeResponse:
         self.headers = headers or {}
         self.status_code = status_code
 
+    def __iter__(self):
+        text = self.text
+        encoded = text.encode('utf-8')
+        self.text = encoded
+        try:
+            yield self
+        finally:
+            self.text = text
+
 
 @pytest.fixture
 def mock_url(monkeypatch):
