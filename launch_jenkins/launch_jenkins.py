@@ -386,7 +386,7 @@ def wait_for_job(build_url, auth, interval=5.0):
     except HTTPError as error:
         if error.code == 404:
             build_number = build_url.rstrip('/').rpartition('/')[2]
-            error.msg = ('Build #%s does not exist' % build_number)
+            error.msg = 'Build #%s does not exist' % build_number
         raise error
 
     response = json.loads(response.text)
