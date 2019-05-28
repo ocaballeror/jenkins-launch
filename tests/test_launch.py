@@ -134,12 +134,8 @@ def test_parse_incomplete_args(monkeypatch, args):
 
 @pytest.mark.parametrize(
     'args',
-    [
-        ['--launch-only', '--wait-only']
-    ],
-    ids=[
-        'Launch only and wait only'
-    ]
+    [['--launch-only', '--wait-only']],
+    ids=['Launch only and wait only'],
 )
 def test_parse_incompatible_args(monkeypatch, args):
     new_argv = ['python'] + g_params + args
@@ -195,11 +191,11 @@ def test_optional_flags(monkeypatch, config):
     assert launch_jenkins.CONFIG['progress']
 
 
-@pytest.mark.parametrize('arg, expect', [
-    ('', 'full'),
-    ('-l', 'launch'),
-    ('-w', 'wait'),
-], ids=['full', 'launch only', 'wait only'])
+@pytest.mark.parametrize(
+    'arg, expect',
+    [('', 'full'), ('-l', 'launch'), ('-w', 'wait')],
+    ids=['full', 'launch only', 'wait only'],
+)
 def test_launch_wait_only(arg, expect, monkeypatch, config):
     new_argv = ['python'] + g_params
     if arg:
