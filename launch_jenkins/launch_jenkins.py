@@ -21,10 +21,12 @@ from collections import OrderedDict
 if sys.version_info >= (3,):
     from urllib.request import Request, quote, urlopen  # noqa:F401
     from urllib.error import URLError, HTTPError  # noqa:F401
+    from urllib.parse import urlencode  # noqa:F401
     from collections.abc import Mapping, MutableMapping  # noqa:F401
 else:
     from urllib2 import Request, quote, urlopen  # noqa:F401
     from urllib2 import URLError, HTTPError  # noqa:F401
+    from urllib import urlencode  # noqa:F401
     from collections import Mapping, MutableMapping  # noqa:F401
 
 
@@ -300,7 +302,9 @@ def get_url(url, auth, data=None, stream=False):
         basic = base64.b64encode(auth)
     headers['Authorization'] = 'Basic {}'.format(basic)
 
-    data = json.dumps(data).encode('utf-8')
+    if data:
+        data = urlencode(data).encode('utf-8')
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
     req = Request(url, data, headers=headers)
     response = urlopen(req)
     if sys.version_info >= (3,):
