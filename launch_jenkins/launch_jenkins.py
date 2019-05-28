@@ -414,7 +414,7 @@ def save_log_to_file(build_url, auth):
 
     url = build_url + 'consoleText'
     for block in get_url(url, auth=auth, stream=2048):
-        file.write(block.text.decode('utf-8'))
+        file.write(block.text.decode('utf-8', errors='ignore'))
 
     if not CONFIG['dump']:
         file.close()
