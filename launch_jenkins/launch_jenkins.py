@@ -20,12 +20,12 @@ from collections import OrderedDict
 
 if sys.version_info >= (3,):
     from urllib.request import Request, quote, urlopen  # noqa:F401
-    from urllib.error import URLError, HTTPError  # noqa:F401
+    from urllib.error import HTTPError  # noqa:F401
     from urllib.parse import urlencode  # noqa:F401
     from collections.abc import Mapping, MutableMapping  # noqa:F401
 else:
     from urllib2 import Request, quote, urlopen  # noqa:F401
-    from urllib2 import URLError, HTTPError  # noqa:F401
+    from urllib2 import HTTPError  # noqa:F401
     from urllib import urlencode  # noqa:F401
     from collections import Mapping, MutableMapping  # noqa:F401
 
