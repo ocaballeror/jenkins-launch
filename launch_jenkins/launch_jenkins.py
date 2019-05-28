@@ -13,6 +13,7 @@ import time
 import os
 import re
 import base64
+import io
 from itertools import cycle
 from collections import namedtuple
 from collections import OrderedDict
@@ -409,7 +410,7 @@ def save_log_to_file(build_url, auth):
         job_name = build_url[build_url.find('/job/') :]
         job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
         log_file = job_name + '.txt'
-        file = open(log_file, 'w')
+        file = io.open(log_file, 'w', encoding='utf-8')
 
     url = build_url + 'consoleText'
     for block in get_url(url, auth=auth, stream=2048):
