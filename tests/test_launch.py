@@ -9,8 +9,16 @@ from threading import Thread
 
 import pytest
 
+if sys.version_info >= (3,):
+    from urllib.parse import parse_qs
+else:
+    from urlparse import parse_qs
+
+    range = xrange  # noqa:F821
+
 
 from launch_jenkins import launch_jenkins
+from launch_jenkins import get_url
 from launch_jenkins import is_parametrized
 from launch_jenkins import launch_build
 from launch_jenkins import wait_queue_item
@@ -21,6 +29,7 @@ from launch_jenkins import parse_job_url
 from launch_jenkins import get_stderr_size_unix
 from launch_jenkins import is_progressbar_capable
 from launch_jenkins import HTTPError
+from launch_jenkins import CaseInsensitiveDict
 
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
@@ -31,23 +40,37 @@ from .test_helper import raise_error
 
 url = "http://example.com:8080/job/thing/job/other/job/master"
 g_auth = ('user', 'pwd')
+g_auth_b64 = 'Basic dXNlcjpwd2Q='
 g_params = ['-j', url, '-u', g_auth[0], '-t', g_auth[1]]
 
 
 class FakeResponse:
     def __init__(self, text='', headers=None, status_code=200):
         self.text = text
-        self.headers = headers or {}
+        self._readable = text
+        self.headers = CaseInsensitiveDict(headers)
+        if sys.version_info >= (3,):
+            self.headers._headers = self.headers
+        else:
+            self.headers.dict = self.headers
         self.status_code = status_code
 
     def __iter__(self):
-        text = self.text
+        while True:
+            self.text = self.read(8192)
+            if self.text:
+                yield self
+            else:
+                break
+
+    def read(self, size=0):
+        if not size:
+            size = len(self._readable)
+        text = self._readable[:size]
+        self._readable = self._readable[size:]
         if not isinstance(text, bytes):
-            self.text = text.encode('utf-8')
-        try:
-            yield self
-        finally:
-            self.text = text
+            text = text.encode('utf-8')
+        return text
 
 
 @pytest.fixture
@@ -241,6 +264,73 @@ def test_parse_job_url_error(job_url):
     with pytest.raises(ValueError) as error:
         parse_job_url(job_url)
     assert 'invalid job url' in str(error.value).lower()
+
+
+def test_get_url(monkeypatch):
+    requests = []
+    text = 'hello world'
+    resp_headers = dict(location='here')
+    url = 'http://example.com'
+
+    def fake_response(r):
+        requests.append(r)
+        return FakeResponse(text, headers=resp_headers)
+
+    monkeypatch.setattr(launch_jenkins, 'urlopen', fake_response)
+    resp = get_url(url, auth=g_auth)
+    assert resp.text == text
+    assert resp.headers['location'] == 'here'
+    assert resp.headers['LoCaTiOn'] == 'here'
+
+    req = requests[0]
+    print(req)
+    print(req.__dict__)
+    if hasattr(req, '_Request__original'):
+        assert req._Request__original == url
+    else:
+        assert req._full_url == url
+    assert req.data is None
+    assert req.headers['Authorization'] == g_auth_b64
+
+
+def test_get_url_data(monkeypatch):
+    requests = []
+    url = 'http://example.com'
+    data = {'simple': 'hello', 'space': 'hello world', 'weird': 'jk34$"/ &aks'}
+
+    def fake_response(r):
+        requests.append(r)
+        return FakeResponse()
+
+    monkeypatch.setattr(launch_jenkins, 'urlopen', fake_response)
+    get_url(url, auth=g_auth, data=data)
+
+    req = requests[0]
+    if hasattr(req, '_Request__original'):
+        assert req._Request__original == url
+    else:
+        assert req._full_url == url
+    assert req.headers['Authorization'] == g_auth_b64
+    assert req.headers['Content-type'] == 'application/x-www-form-urlencoded'
+    parsed = parse_qs(req.data.decode('utf-8'))
+    parsed = {k: (v[0] if len(v) == 1 else v) for k, v in parsed.items()}
+    assert parsed == data
+
+
+def test_get_url_stream(monkeypatch):
+    requests = []
+    text = 'a' * 8192 + 'b' * 100
+    url = 'http://example.com'
+
+    def fake_response(r):
+        requests.append(r)
+        return FakeResponse(text)
+
+    monkeypatch.setattr(launch_jenkins, 'urlopen', fake_response)
+    resp = get_url(url, auth=g_auth, stream=True)
+    assert not hasattr(resp, 'text')
+    assert next(resp).text.decode('utf-8') == 'a' * 8192
+    assert next(resp).text.decode('utf-8') == 'b' * 100
 
 
 def test_build_no_params(mock_url):
