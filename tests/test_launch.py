@@ -42,8 +42,8 @@ class FakeResponse:
 
     def __iter__(self):
         text = self.text
-        encoded = text.encode('utf-8')
-        self.text = encoded
+        if not isinstance(text, bytes):
+            self.text = text.encode('utf-8')
         try:
             yield self
         finally:
@@ -378,6 +378,19 @@ def test_save_log_to_file(mock_url):
         save_log_to_file(url, g_auth)
         assert os.path.isfile(filename)
         assert open(filename).read() == content
+    finally:
+        if os.path.isfile(filename):
+            os.remove(filename)
+
+
+def test_save_binary_log_to_file(mock_url):
+    content = b'binary log \xe2\x80 here'
+    filename = 'thing_other_master.txt'
+    mock_url(dict(url=url + '/consoleText', text=content))
+    try:
+        save_log_to_file(url, g_auth)
+        assert os.path.isfile(filename)
+        assert open(filename).read() == 'binary log  here'
     finally:
         if os.path.isfile(filename):
             os.remove(filename)
