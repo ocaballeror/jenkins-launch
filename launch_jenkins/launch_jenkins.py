@@ -282,10 +282,10 @@ class CaseInsensitiveDict(MutableMapping):
         return str(dict(self.items()))
 
 
-def get_url(url, auth, data=None, stream=0):
+def get_url(url, auth, data=None, stream=False):
     def stream_response():
         while True:
-            response.text = response.read(stream)
+            response.text = response.read(8192)
             if response.text:
                 yield response
             else:
@@ -413,7 +413,7 @@ def save_log_to_file(build_url, auth):
         file = io.open(log_file, 'w', encoding='utf-8')
 
     url = build_url + 'consoleText'
-    for block in get_url(url, auth=auth, stream=2048):
+    for block in get_url(url, auth=auth, stream=True):
         file.write(block.text.decode('utf-8', errors='ignore'))
 
     if not CONFIG['dump']:
