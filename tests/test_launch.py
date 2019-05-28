@@ -456,6 +456,25 @@ def test_wait_for_job_fail(mock_url):
     assert not wait_for_job(url, g_auth, 0.2)
 
 
+def test_wait_for_job_nonexistent(monkeypatch):
+    status_code = 400
+    build_number = 65
+    build_url = 'http://example.com/%s' % build_number
+
+    def raise_httperror(*args, **kwargs):
+        raise HTTPError(build_url, status_code, 'Mock http error', {}, None)
+
+    monkeypatch.setattr(launch_jenkins, 'get_url', raise_httperror)
+    with pytest.raises(HTTPError) as error:
+        wait_for_job(build_url, None)
+        assert str(error.value) == 'Mock http error'
+
+    status_code = 404
+    with pytest.raises(HTTPError) as error:
+        wait_for_job(build_url, None)
+        assert str(error.value) == 'Build #%s does not exist' % build_number
+
+
 def test_save_log_to_file(mock_url):
     content = 'some log content here'
     filename = 'thing_other_master.txt'
