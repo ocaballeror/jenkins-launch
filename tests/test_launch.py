@@ -38,10 +38,10 @@ from .test_helper import terminal_size  # noqa: F401
 from .test_helper import raise_error
 
 
-url = "http://example.com:8080/job/thing/job/other/job/master"
+g_url = "http://example.com:8080/job/thing/job/other/job/master"
 g_auth = ('user', 'pwd')
 g_auth_b64 = 'Basic dXNlcjpwd2Q='
-g_params = ['-j', url, '-u', g_auth[0], '-t', g_auth[1]]
+g_params = ['-j', g_url, '-u', g_auth[0], '-t', g_auth[1]]
 
 
 @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ def test_basic_argv(monkeypatch):
     new_argv = ['python'] + g_params
     monkeypatch.setattr(sys, 'argv', new_argv)
     launch_params = parse_args()
-    assert launch_params == (url, g_auth, {})
+    assert launch_params == (g_url, g_auth, {})
 
 
 def test_argv_params(monkeypatch):
@@ -103,7 +103,7 @@ def test_argv_params(monkeypatch):
     new_argv = ['python'] + g_params + params
     monkeypatch.setattr(sys, 'argv', new_argv)
     launch_params = parse_args()
-    assert launch_params == (url, g_auth, build_params)
+    assert launch_params == (g_url, g_auth, build_params)
 
 
 @pytest.mark.parametrize(
@@ -156,42 +156,42 @@ def test_launch_wait_only(arg, expect, monkeypatch, config):
     ],
 )
 def test_is_parametrized(mock_url, response, expect):
-    mock_url({'url': url + '/api/json', 'text': json.dumps(response)})
-    assert is_parametrized(url, g_auth) == expect
+    mock_url({'url': g_url + '/api/json', 'text': json.dumps(response)})
+    assert is_parametrized(g_url, g_auth) == expect
 
 
 @pytest.mark.parametrize(
     'url',
     [
-        url,
-        url + '/',
-        url + '/build',
-        url + '/build/',
-        url + '/buildWithParameters',
-        url + '/buildWithParameters/',
+        g_url,
+        g_url + '/',
+        g_url + '/build',
+        g_url + '/build/',
+        g_url + '/buildWithParameters',
+        g_url + '/buildWithParameters/',
     ],
 )
 def test_parse_job_url(url):
-    assert parse_job_url(url) == (url, [])
+    assert parse_job_url(url) == (g_url, [])
 
 
 def test_parse_job_url_params():
-    build_url = url + '/buildWithParameters?a=b'
-    assert parse_job_url(build_url) == (url, ['a=b'])
+    build_url = g_url + '/buildWithParameters?a=b'
+    assert parse_job_url(build_url) == (g_url, ['a=b'])
 
-    build_url = url + '/buildWithParameters?a=b&c=d'
-    assert parse_job_url(build_url) == (url, ['a=b', 'c=d'])
+    build_url = g_url + '/buildWithParameters?a=b&c=d'
+    assert parse_job_url(build_url) == (g_url, ['a=b', 'c=d'])
 
 
 @pytest.mark.parametrize(
     'job_url',
     [
         'http',
-        url + '/asdf',
-        url + '/build?a=b',
-        url + '/buildwiththings?a=b',
-        url + '/buildwithparameters',
-        url + '/buildwithparameters?a=b',
+        g_url + '/asdf',
+        g_url + '/build?a=b',
+        g_url + '/buildwiththings?a=b',
+        g_url + '/buildwithparameters',
+        g_url + '/buildwithparameters?a=b',
     ],
     ids=[
         'not a url',
@@ -280,14 +280,14 @@ def test_build_no_params(mock_url):
     mock_url(
         [
             # Return build location
-            dict(url=url + '/build', headers=headers),
+            dict(url=g_url + '/build', headers=headers),
             # Set build properties as not parametrized
-            dict(url=url + '/api/json', text='{}'),
+            dict(url=g_url + '/api/json', text='{}'),
         ]
     )
 
     # Launch build
-    assert launch_build(url, g_auth, {}) == 'some queue'
+    assert launch_build(g_url, g_auth, {}) == 'some queue'
 
 
 def test_build_with_params(mock_url):
@@ -299,14 +299,14 @@ def test_build_with_params(mock_url):
 
     mock_url(
         [
-            dict(url=url + '/buildWithParameters', headers=headers),
-            dict(url=url + '/api/json', text=props),
+            dict(url=g_url + '/buildWithParameters', headers=headers),
+            dict(url=g_url + '/api/json', text=props),
         ]
     )
 
     # Launch parametrized build
-    assert launch_build(url, g_auth) == 'param queue'
-    assert launch_build(url, g_auth, {'a': 'b'}) == 'param queue'
+    assert launch_build(g_url, g_auth) == 'param queue'
+    assert launch_build(g_url, g_auth, {'a': 'b'}) == 'param queue'
 
 
 def test_build_unparametrized_with_params(monkeypatch):
@@ -316,40 +316,40 @@ def test_build_unparametrized_with_params(monkeypatch):
     """
     monkeypatch.setattr(launch_jenkins, 'is_parametrized', lambda x, y: False)
     with pytest.raises(RuntimeError) as error:
-        launch_build(url, g_auth, params={'key': 'value'})
+        launch_build(g_url, g_auth, params={'key': 'value'})
         assert 'parameters' in str(error)
 
 
 def test_launch_error(mock_url):
     mock_url(
         [
-            dict(url=url + '/api/json', text='{}'),
-            dict(url=url + '/build', status_code=400),
+            dict(url=g_url + '/api/json', text='{}'),
+            dict(url=g_url + '/build', status_code=400),
         ]
     )
 
     with pytest.raises(HTTPError):
-        launch_build(url, g_auth)
+        launch_build(g_url, g_auth)
 
 
 def test_launch_error_no_queue(mock_url):
     headers = {'Header': 'value'}
     mock_url(
         [
-            dict(url=url + '/build', headers=headers),
-            dict(url=url + '/api/json', text='{}'),
+            dict(url=g_url + '/build', headers=headers),
+            dict(url=g_url + '/api/json', text='{}'),
         ]
     )
 
     # Response has no location header
     with pytest.raises(AssertionError):
-        launch_build(url, g_auth, {})
+        launch_build(g_url, g_auth, {})
 
     headers = {'Location': 'this is not the word you are looking for'}
-    mock_url(dict(url=url + '/build', headers=headers))
+    mock_url(dict(url=g_url + '/build', headers=headers))
     # Location has no queue url
     with pytest.raises(AssertionError):
-        launch_build(url, g_auth, {})
+        launch_build(g_url, g_auth, {})
 
 
 def test_wait_queue_item(mock_url):
@@ -357,13 +357,13 @@ def test_wait_queue_item(mock_url):
         time.sleep(0.5)
         resp = {'executable': {'url': 'some url'}}
         resp = json.dumps(resp)
-        mock_url(dict(url=url + '/api/json', text=resp))
+        mock_url(dict(url=g_url + '/api/json', text=resp))
 
-    mock_url(dict(url=url + '/api/json', text='{}'))
+    mock_url(dict(url=g_url + '/api/json', text='{}'))
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    wait_queue_item(url, g_auth, 0.2)
+    wait_queue_item(g_url, g_auth, 0.2)
     assert time.time() - t0 >= 0.5
 
 
@@ -372,14 +372,14 @@ def test_wait_for_job(mock_url):
         time.sleep(0.5)
         resp = {'result': 'success', 'displayName': 'name'}
         resp = json.dumps(resp)
-        mock_url(dict(url=url + '/api/json', text=resp))
+        mock_url(dict(url=g_url + '/api/json', text=resp))
 
     resp = {'displayName': 'name'}
-    mock_url(dict(url=url + '/api/json', text=json.dumps(resp)))
+    mock_url(dict(url=g_url + '/api/json', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    assert wait_for_job(url, g_auth, 0.2)
+    assert wait_for_job(g_url, g_auth, 0.2)
     assert time.time() - t0 >= 0.5
 
 
@@ -393,13 +393,13 @@ def test_wait_for_job_fail(mock_url):
         time.sleep(0.5)
         resp = {'result': 'failure', 'displayName': 'name'}
         resp = json.dumps(resp)
-        mock_url(dict(url=url + '/api/json', text=resp))
+        mock_url(dict(url=g_url + '/api/json', text=resp))
 
     resp = {'displayName': 'name'}
-    mock_url(dict(url=url + '/api/json', text=json.dumps(resp)))
+    mock_url(dict(url=g_url + '/api/json', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
-    assert not wait_for_job(url, g_auth, 0.2)
+    assert not wait_for_job(g_url, g_auth, 0.2)
 
 
 def test_wait_for_job_nonexistent(monkeypatch):
@@ -424,9 +424,9 @@ def test_wait_for_job_nonexistent(monkeypatch):
 def test_save_log_to_file(mock_url):
     content = 'some log content here'
     filename = 'thing_other_master.txt'
-    mock_url(dict(url=url + '/consoleText', text=content))
+    mock_url(dict(url=g_url + '/consoleText', text=content))
     try:
-        save_log_to_file(url, g_auth)
+        save_log_to_file(g_url, g_auth)
         assert os.path.isfile(filename)
         assert open(filename).read() == content
     finally:
@@ -437,9 +437,9 @@ def test_save_log_to_file(mock_url):
 def test_save_binary_log_to_file(mock_url):
     content = b'binary log \xe2\x80 here'
     filename = 'thing_other_master.txt'
-    mock_url(dict(url=url + '/consoleText', text=content))
+    mock_url(dict(url=g_url + '/consoleText', text=content))
     try:
-        save_log_to_file(url, g_auth)
+        save_log_to_file(g_url, g_auth)
         assert os.path.isfile(filename)
         assert open(filename).read() == 'binary log  here'
     finally:
@@ -451,8 +451,8 @@ def test_dump_log_stdout(mock_url, monkeypatch, capsys):
     monkeypatch.setitem(launch_jenkins.CONFIG, 'dump', True)
 
     content = 'job output goes\n here'
-    mock_url(dict(url=url + '/consoleText', text=content))
-    save_log_to_file(url, g_auth)
+    mock_url(dict(url=g_url + '/consoleText', text=content))
+    save_log_to_file(g_url, g_auth)
     out = capsys.readouterr()
     assert out.out == content
     assert not out.err
