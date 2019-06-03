@@ -25,6 +25,7 @@ from launch_jenkins import wait_queue_item
 from launch_jenkins import wait_for_job
 from launch_jenkins import save_log_to_file
 from launch_jenkins import parse_args
+from launch_jenkins import parse_build_url
 from launch_jenkins import parse_job_url
 from launch_jenkins import get_stderr_size_unix
 from launch_jenkins import is_progressbar_capable
@@ -158,6 +159,19 @@ def test_launch_wait_only(arg, expect, monkeypatch, config):
 def test_is_parametrized(mock_url, response, expect):
     mock_url({'url': g_url + '/api/json', 'text': json.dumps(response)})
     assert is_parametrized(g_url, g_auth) == expect
+
+
+@pytest.mark.parametrize(
+    'url', [g_url, g_url + '/build', g_url + '/notanumber', g_url + '/1isnot0']
+)
+def test_parse_build_url_error(url):
+    with pytest.raises(ValueError) as error:
+        parse_build_url(url)
+        assert 'make sure there is a build number' in str(error.value).lower()
+
+
+def test_parse_build_url():
+    assert parse_build_url(g_url + '/53') == g_url
 
 
 @pytest.mark.parametrize(
