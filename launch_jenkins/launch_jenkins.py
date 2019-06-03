@@ -209,6 +209,20 @@ def parse_args():
     return (job, (args.user, args.token), params)
 
 
+def parse_build_url(url):
+    """
+    Get the job url from a build url. Raise a ValueError if the build url
+    appears to be malformed.
+    """
+    job_url, _, number = url.rstrip('/').rpartition('/')
+    if not re.search(r'^\d+$', number):
+        raise ValueError(
+            "This url doesn't look like a valid build. Make sure \
+there is a build number at the end."
+        )
+    return job_url
+
+
 def parse_job_url(job):
     """
     Parse the user input job url and return it along with a list of parameters.
@@ -435,12 +449,7 @@ def main():
     build_url, auth, _ = launch_params
 
     if CONFIG['mode'] == 'wait':
-        job_url, _, number = build_url.rstrip('/').rpartition('/')
-        if not re.search(r'^\d+$', number):
-            raise ValueError(
-                "This url doesn't look like a valid build. Make sure \
-    there is a build number at the end."
-            )
+        job_url = parse_build_url(build_url)
         parse_job_url(job_url)
     else:
         location = launch_build(*launch_params)
