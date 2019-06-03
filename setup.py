@@ -7,10 +7,17 @@ setup(
     author="Oscar Caballero",
     author_email="ocaballeror@tutanota.com",
     packages=['launch_jenkins'],
-    install_requires=['requests'],
     entry_points={
         'console_scripts': [
             'launch_jenkins=launch_jenkins.launch_jenkins:main'
+        ]
+    },
+    install_requires=[],
+    extras_require={
+        'dev': [
+            'pytest',
+            'pytest-cov',
+            'flake8'
         ]
     },
 )
