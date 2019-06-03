@@ -160,13 +160,19 @@ def test_is_parametrized(mock_url, response, expect):
     assert is_parametrized(url, g_auth) == expect
 
 
-def test_parse_job_url():
+@pytest.mark.parametrize(
+    'url',
+    [
+        url,
+        url + '/',
+        url + '/build',
+        url + '/build/',
+        url + '/buildWithParameters',
+        url + '/buildWithParameters/',
+    ],
+)
+def test_parse_job_url(url):
     assert parse_job_url(url) == (url, [])
-    assert parse_job_url(url + '/') == (url, [])
-    assert parse_job_url(url + '/build') == (url, [])
-    assert parse_job_url(url + '/build/') == (url, [])
-    assert parse_job_url(url + '/buildWithParameters') == (url, [])
-    assert parse_job_url(url + '/buildWithParameters/') == (url, [])
 
 
 def test_parse_job_url_params():
