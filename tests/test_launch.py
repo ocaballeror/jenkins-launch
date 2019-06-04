@@ -383,6 +383,22 @@ def test_wait_queue_item(mock_url):
     assert time.time() - t0 >= 0.5
 
 
+def test_wait_queue_item_cancelled(mock_url):
+    def set_finished():
+        time.sleep(0.5)
+        resp = {'cancelled': True}
+        resp = json.dumps(resp)
+        mock_url(dict(url=g_url + '/api/json', text=resp))
+
+    mock_url(dict(url=g_url + '/api/json', text='{}'))
+    Thread(target=set_finished).start()
+
+    t0 = time.time()
+    with pytest.raises(SystemExit):
+        wait_queue_item(g_url, g_auth, 0.2)
+    assert time.time() - t0 >= 0.5
+
+
 def test_wait_for_job(mock_url):
     def set_finished():
         time.sleep(0.5)
