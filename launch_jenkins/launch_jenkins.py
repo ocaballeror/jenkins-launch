@@ -125,8 +125,7 @@ def parse_kwarg(kwarg):
     count = kwarg.count('=')
     if count == 0:
         msg = 'Invalid job argument: "{}". Please use key=value format'
-        errlog(msg.format(kwarg))
-        raise SystemExit
+        raise ValueError(msg)
 
     if count == 1 and kwarg.endswith('='):
         return kwarg[:-1], ''
@@ -202,8 +201,9 @@ def parse_args():
 
     try:
         params = {k: v for k, v in map(parse_kwarg, params)}
-    except Exception:
-        errlog('Job arguments are not properly formatted')
+    except Exception as error:
+        msg = str(error) or 'Job arguments are not properly formatted'
+        errlog(msg)
         raise SystemExit
     return (job, (args.user, args.token), params)
 
