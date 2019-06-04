@@ -126,7 +126,7 @@ def parse_kwarg(kwarg):
     count = kwarg.count('=')
     if count == 0:
         msg = 'Invalid job argument: "{}". Please use key=value format'
-        print(msg.format(kwarg), file=sys.stderr)
+        errlog(msg.format(kwarg))
         raise SystemExit
 
     if count == 1 and kwarg.endswith('='):
@@ -204,7 +204,7 @@ def parse_args():
     try:
         params = {k: v for k, v in map(parse_kwarg, params)}
     except Exception:
-        print('Job arguments are not properly formatted', file=sys.stderr)
+        errlog('Job arguments are not properly formatted')
         raise SystemExit
     return (job, (args.user, args.token), params)
 
@@ -456,7 +456,7 @@ def main():
         build_url = wait_queue_item(location, auth)
 
     if CONFIG['mode'] == 'launch':
-        print(build_url)
+        log(build_url)
         return 0
 
     result = wait_for_job(build_url, auth)
