@@ -287,6 +287,8 @@ def test_get_url_stream(monkeypatch):
     assert not hasattr(resp, 'text')
     assert next(resp).text.decode('utf-8') == 'a' * 8192
     assert next(resp).text.decode('utf-8') == 'b' * 100
+    with pytest.raises(StopIteration):
+        next(resp)
 
 
 def test_build_no_params(mock_url):

@@ -302,10 +302,9 @@ def show_progress(msg, duration):
 def stream_response(response):
     while True:
         response.text = response.read(8192)
-        if response.text:
-            yield response
-        else:
+        if not response.text:
             break
+        yield response
 
 
 def get_url(url, auth, data=None, stream=False):
