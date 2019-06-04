@@ -91,11 +91,10 @@ class CaseInsensitiveDict(MutableMapping):
         )
 
     def __eq__(self, other):
-        if isinstance(other, Mapping):
-            other = CaseInsensitiveDict(other)
-        else:
-            return NotImplemented
+        if not isinstance(other, Mapping):
+            return False
         # Compare insensitively
+        other = CaseInsensitiveDict(other)
         return dict(self.lower_items()) == dict(other.lower_items())
 
     # Copy is required
