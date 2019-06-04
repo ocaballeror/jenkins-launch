@@ -5,5 +5,4 @@ source = launch_jenkins
 [report]
 show_missing = True
 exclude_lines =
-	if sys.version_info
 	if __name__ == .__main__.:
