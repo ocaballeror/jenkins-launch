@@ -1,6 +1,8 @@
 # Jenkins Launcher
 
 [![Build Status](https://travis-ci.org/ocaballeror/jenkins-launch.svg?branch=master)](https://travis-ci.org/ocaballeror/jenkins-launch)
+[![codecov](https://codecov.io/gh/ocaballeror/jenkins-launch/branch/master/graph/badge.svg)](https://codecov.io/gh/ocaballeror/jenkins-launch)
+
 
 Script to launch a Jenkins build and wait for it to finish.
 
