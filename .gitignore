@@ -7,3 +7,5 @@ pip-wheel-metadata/
 .coverage
 .coverage\.*
 .tox
+build/
+dist/
