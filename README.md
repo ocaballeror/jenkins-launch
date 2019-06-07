@@ -37,7 +37,7 @@ If your build takes parameters, you can pass them to the script as a list of `ke
     * Description: Only launch the new job and exit when it starts running
 	* Conflicts: `-w`
 * `-w / --wait-only`
-    * Description: Wait until the running build pointed at by `-j` finishes running
+    * Description: Interpret `-j` as an already running build and wait for it to finsih
 	* Conflicts: `-l`
 
 ## Examples
