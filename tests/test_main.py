@@ -2,6 +2,7 @@ import sys
 import pytest
 
 from launch_jenkins import launch_jenkins
+from launch_jenkins import __version__
 
 
 call_log = []
@@ -73,6 +74,7 @@ def launch_only(monkeypatch):
 @pytest.fixture
 def wait_only(monkeypatch):
     monkeypatch.setitem(launch_jenkins.CONFIG, 'mode', 'wait')
+
 
 @pytest.fixture
 def quiet(monkeypatch):
@@ -184,3 +186,20 @@ def test_launch_jenkins_main(monkeypatch):
 )
 def test_launch_jenkins_main_fail(monkeypatch):
     assert launch_jenkins.main() == 1
+
+
+def test_launch_jenkins_version(monkeypatch, capsys):
+    new_argv = [__file__, '--version']
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    with pytest.raises(SystemExit) as e:
+        launch_jenkins.main()
+        assert int(e.value) == 0
+
+    captured = capsys.readouterr()
+    expect = 'Jenkins launcher v{}'.format(__version__)
+    if sys.version_info < (3,):
+        assert not captured.out
+        assert captured.err.strip() == expect
+    else:
+        assert not captured.err
+        assert captured.out.strip() == expect
