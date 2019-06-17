@@ -454,7 +454,7 @@ def main():
         build_url = wait_queue_item(location, auth)
 
     if CONFIG['mode'] == 'launch':
-        log(build_url)
+        print(build_url)
         return 0
 
     result = wait_for_job(build_url, auth)

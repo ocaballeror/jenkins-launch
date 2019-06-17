@@ -74,17 +74,26 @@ def launch_only(monkeypatch):
 def wait_only(monkeypatch):
     monkeypatch.setitem(launch_jenkins.CONFIG, 'mode', 'wait')
 
+@pytest.fixture
+def quiet(monkeypatch):
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'quiet', True)
+
 
 @pytest.mark.usefixtures(
-    'parse_args', 'launch_build', 'wait_queue_item', 'launch_only'
+    'parse_args', 'launch_build', 'wait_queue_item', 'launch_only', 'quiet'
 )
-def test_launch_only():
+def test_launch_only(capsys):
     del call_log[:]
 
     launch_jenkins.main()
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('launch_build', [build_url, g_auth, params])
     assert call_log[2] == ('wait_queue_item', [queue_item, g_auth])
+
+    # even if it was launched with -q, it should output the build url to stdout
+    captured = capsys.readouterr()
+    assert not captured.err
+    assert captured.out.strip() == build_url
 
 
 @pytest.mark.usefixtures(
