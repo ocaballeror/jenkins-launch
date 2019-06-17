@@ -203,3 +203,19 @@ def test_launch_jenkins_version(monkeypatch, capsys):
     else:
         assert not captured.err
         assert captured.out.strip() == expect
+
+
+def test_launch_jenkins_help(monkeypatch, capsys):
+    new_argv = [__file__, '--help']
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    with pytest.raises(SystemExit) as e:
+        launch_jenkins.main()
+        assert int(e.value) == 0
+
+    captured = capsys.readouterr()
+    out = captured.out.strip()
+
+    assert 'Jenkins launcher' in out
+    assert 'usage:' in out
+    assert 'positional arguments:' in out
+    assert 'optional arguments:' in out
