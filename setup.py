@@ -1,9 +1,10 @@
 from setuptools import setup
+from launch_jenkins import __version__
 
 setup(
     name="jenkins_launch",
     description="Launch a jenkins job and wait for it to finish",
-    version="2.1",
+    version=__version__,
     author="Oscar Caballero",
     author_email="ocaballeror@tutanota.com",
     packages=['launch_jenkins'],

@@ -32,6 +32,8 @@ else:
 
 CONFIG = {'dump': False, 'quiet': False, 'progress': False, 'mode': 'full'}
 
+__version__ = '2.1.0'
+
 
 class CaseInsensitiveDict(MutableMapping):
     """
@@ -140,7 +142,8 @@ def parse_args():
     and the build parameters for the job, if any.
     """
     parser = argparse.ArgumentParser(
-        description='Launch a Jenkins job and wait for it to finish'
+        prog='Jenkins launcher',
+        description='Launch a Jenkins job and wait for it to finish',
     )
     parser.add_argument(
         '-u', '--user', help='Username', type=str, required=True
@@ -163,6 +166,11 @@ def parse_args():
     )
     parser.add_argument(
         '-p', '--progress', help='Force show progress bar', action='store_true'
+    )
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='%(prog)s v{}'.format(__version__),
     )
     parser.add_argument(
         'params',
