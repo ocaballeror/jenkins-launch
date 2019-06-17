@@ -32,7 +32,7 @@ else:
 
 CONFIG = {'dump': False, 'quiet': False, 'progress': False, 'mode': 'full'}
 
-__version__ = '2.1.0'
+__version__ = '2.1.1'
 
 
 class CaseInsensitiveDict(MutableMapping):
