@@ -324,7 +324,7 @@ def get_url(url, auth, data=None, stream=False):
         basic = base64.b64encode(auth)
     headers['Authorization'] = 'Basic {}'.format(basic)
 
-    if data:
+    if data is not None:
         data = urlencode(data).encode('utf-8')
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
     req = Request(url, data, headers=headers)
@@ -365,7 +365,8 @@ def launch_build(url, auth, params=None):
 
     url += 'buildWithParameters' if has_params else 'build'
     log('Sending build request')
-    response = get_url(url, data=params, auth=auth)
+    data = params or ""  # urllib will send a POST with an empty string
+    response = get_url(url, data=data, auth=auth)
 
     assert (
         'Location' in response.headers
