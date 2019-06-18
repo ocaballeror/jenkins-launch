@@ -11,6 +11,7 @@ class FakeResponse:
     """
     Mock response class that works more or less like an HTTP Response object.
     """
+
     def __init__(self, text='', headers=None, status_code=200):
         self.text = text
         self._readable = text
@@ -57,16 +58,21 @@ def mock_url(monkeypatch):
     Returns a function that allows you to return a canned FakeResponse when a
     specific url is requested.
     """
+
     def ret(mock_pairs):
         if not isinstance(mock_pairs, list):
             mock_pairs = [mock_pairs]
-        mock_pairs = {p.pop('url'): p for p in mock_pairs}
-        _get_url = launch_jenkins.get_url
+        mock_pairs = {
+            (p.pop('url'), p.pop('method', 'GET').upper()): p
+            for p in mock_pairs
+        }
 
-        def mock(url, *args, **kwargs):
-            resp = mock_pairs.get(url, None)
-            if not resp:
-                return _get_url(url, *args, **kwargs)
+        def mock(request):
+            url = request.get_full_url()
+            method = request.get_method()
+            resp = mock_pairs.get((url, method), None)
+            if resp is None:
+                raise RuntimeError('No mock response set for url')
 
             resp['text'] = resp.get('text', '')
             resp['headers'] = resp.get('headers', {})
@@ -81,6 +87,6 @@ def mock_url(monkeypatch):
                 )
             return FakeResponse(**resp)
 
-        monkeypatch.setattr(launch_jenkins, 'get_url', mock)
+        monkeypatch.setattr(launch_jenkins, 'urlopen', mock)
 
     return ret
