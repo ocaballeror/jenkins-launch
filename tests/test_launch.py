@@ -296,7 +296,7 @@ def test_build_no_params(mock_url):
     mock_url(
         [
             # Return build location
-            dict(url=g_url + '/build', headers=headers),
+            dict(url=g_url + '/build', headers=headers, method='POST'),
             # Set build properties as not parametrized
             dict(url=g_url + '/api/json', text='{}'),
         ]
@@ -315,7 +315,11 @@ def test_build_with_params(mock_url):
 
     mock_url(
         [
-            dict(url=g_url + '/buildWithParameters', headers=headers),
+            dict(
+                url=g_url + '/buildWithParameters',
+                headers=headers,
+                method='POST',
+            ),
             dict(url=g_url + '/api/json', text=props),
         ]
     )
@@ -340,7 +344,7 @@ def test_launch_error(mock_url):
     mock_url(
         [
             dict(url=g_url + '/api/json', text='{}'),
-            dict(url=g_url + '/build', status_code=400),
+            dict(url=g_url + '/build', status_code=400, method='POST'),
         ]
     )
 
@@ -352,7 +356,7 @@ def test_launch_error_no_queue(mock_url):
     headers = {'Header': 'value'}
     mock_url(
         [
-            dict(url=g_url + '/build', headers=headers),
+            dict(url=g_url + '/build', headers=headers, method='POST'),
             dict(url=g_url + '/api/json', text='{}'),
         ]
     )
@@ -362,7 +366,12 @@ def test_launch_error_no_queue(mock_url):
         launch_build(g_url, g_auth, {})
 
     headers = {'Location': 'this is not the word you are looking for'}
-    mock_url(dict(url=g_url + '/build', headers=headers))
+    mock_url(
+        [
+            dict(url=g_url + '/build', headers=headers, method='POST'),
+            dict(url=g_url + '/api/json', text='{}'),
+        ]
+    )
     # Location has no queue url
     with pytest.raises(AssertionError):
         launch_build(g_url, g_auth, {})
