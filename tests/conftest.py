@@ -8,6 +8,9 @@ from launch_jenkins import CaseInsensitiveDict
 
 
 class FakeResponse:
+    """
+    Mock response class that works more or less like an HTTP Response object.
+    """
     def __init__(self, text='', headers=None, status_code=200):
         self.text = text
         self._readable = text
@@ -38,6 +41,9 @@ class FakeResponse:
 
 @pytest.fixture
 def config():
+    """
+    Fixture to restore the original CONFIG in the launch_jenkins module.
+    """
     backup = launch_jenkins.CONFIG.copy()
     try:
         yield
@@ -47,6 +53,10 @@ def config():
 
 @pytest.fixture
 def mock_url(monkeypatch):
+    """
+    Returns a function that allows you to return a canned FakeResponse when a
+    specific url is requested.
+    """
     def ret(mock_pairs):
         if not isinstance(mock_pairs, list):
             mock_pairs = [mock_pairs]
