@@ -249,6 +249,14 @@ def test_get_url(monkeypatch):
     assert req.headers['Authorization'] == g_auth_b64
 
 
+def test_get_url_escaped(mock_url):
+    text = 'yes'
+    url = 'http://example.com/feature%252Fhelloworld'
+    mock_url(dict(url=url, text=text))
+
+    assert get_url(url, auth=g_auth).text == text
+
+
 def test_get_url_data(monkeypatch):
     requests = []
     url = 'http://example.com'
