@@ -53,6 +53,11 @@ def config():
 
 
 @pytest.fixture
+def unparametrized(monkeypatch):
+    monkeypatch.setattr(launch_jenkins, 'get_job_params', lambda a, b: {})
+
+
+@pytest.fixture
 def mock_url(monkeypatch):
     """
     Returns a function that allows you to return a canned FakeResponse when a
