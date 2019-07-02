@@ -19,7 +19,7 @@ else:
 
 from launch_jenkins import launch_jenkins
 from launch_jenkins import get_url
-from launch_jenkins import is_parametrized
+from launch_jenkins import get_job_params
 from launch_jenkins import launch_build
 from launch_jenkins import wait_queue_item
 from launch_jenkins import wait_for_job
@@ -146,18 +146,75 @@ def test_launch_wait_only(arg, expect, monkeypatch, config):
 
 
 @pytest.mark.parametrize(
-    'response,expect',
+    'response',
     [
-        ({}, False),
-        ({'key': 'value'}, False),
-        ({'property': []}, False),
-        ({'property': [{'key': 'value'}]}, False),
-        ({'property': [{'parameterDefinitions': ['things']}]}, True),
+        {},
+        {'key': 'value'},
+        {'property': []},
+        {'property': [{'key': 'value'}]},
+        {'property': [{'parameterDefinitions': ['things']}]},
+        {
+            'property': [
+                {
+                    '_class': 'hudson.model.ParametersDefinitionProperty',
+                    'parameterDefinitions': [],
+                }
+            ]
+        },
     ],
 )
-def test_is_parametrized(mock_url, response, expect):
+def test_get_job_params_empty(mock_url, response):
+    """
+    Get job params when there is no parameter definition
+    """
     mock_url({'url': g_url + '/api/json', 'text': json.dumps(response)})
-    assert is_parametrized(g_url, g_auth) == expect
+    assert get_job_params(g_url, g_auth) == {}
+
+
+@pytest.mark.parametrize(
+    'response, expect',
+    [
+        (
+            [
+                {
+                    "_class": "hudson.model.ChoiceParameterDefinition",
+                    "defaultParameterValue": {
+                        "_class": "hudson.model.StringParameterValue",
+                        "name": "action",
+                        "value": "create or update",
+                    },
+                    "description": "Action to be executed",
+                    "name": "action",
+                    "type": "ChoiceParameterDefinition",
+                    "choices": ["create or update", "run discovery"],
+                },
+                {
+                    "_class": "hudson.model.StringParameterDefinition",
+                    "defaultParameterValue": {
+                        "_class": "hudson.model.StringParameterValue",
+                        "name": "ci_name",
+                        "value": "",
+                    },
+                    "description": "CI name",
+                    "name": "ci_name",
+                    "type": "StringParameterDefinition",
+                },
+            ],
+            {'action': ['create or update', 'run discovery'], 'ci_name': None},
+        )
+    ],
+)
+def test_get_job_params(mock_url, response, expect):
+    response = {
+        'property': [
+            {
+                '_class': 'hudson.model.ParametersDefinitionProperty',
+                'parameterDefinitions': response,
+            }
+        ]
+    }
+    mock_url({'url': g_url + '/api/json', 'text': json.dumps(response)})
+    assert get_job_params(g_url, g_auth) == expect
 
 
 @pytest.mark.parametrize(
