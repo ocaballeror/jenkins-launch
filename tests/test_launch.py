@@ -218,6 +218,48 @@ def test_get_job_params(mock_url, response, expect):
 
 
 @pytest.mark.parametrize(
+    'definitions,supplied',
+    [
+        ({}, {'a': 'b'}),
+        ({'a': None}, {'b': 'c'}),
+        ({'a': None}, {'a': 'b', 'c': 'd'}),
+        ({'a': ['b', 'c']}, {'a': 'd'}),
+    ],
+    ids=[
+        'supplied, no definitions',
+        'nonexistent',
+        'some exist, others not',
+        'invalid choice',
+    ],
+)
+def test_validate_params_error(definitions, supplied):
+    with pytest.raises(ValueError):
+        launch_jenkins.validate_params(definitions, supplied)
+
+
+@pytest.mark.parametrize(
+    'definitions,supplied',
+    [
+        ({'param': ['a', 'b'], 'other': None}, {}),
+        ({'param': ['a', 'b'], 'other': None}, {'param': 'b'}),
+        ({'param': ['a', 'b'], 'other': None}, {'other': 'value here'}),
+        (
+            {'param': ['a', 'b'], 'other': None},
+            {'param': 'b', 'other': 'asdfasdf'},
+        ),
+    ],
+    ids=[
+        'nothing supplied',
+        'supplied choice',
+        'supplied string',
+        'supplied both',
+    ],
+)
+def test_validate_params_ok(definitions, supplied):
+    launch_jenkins.validate_params(definitions, supplied)
+
+
+@pytest.mark.parametrize(
     'url', [g_url, g_url + '/build', g_url + '/notanumber', g_url + '/1isnot0']
 )
 def test_parse_build_url_error(url):
