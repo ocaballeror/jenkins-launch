@@ -72,7 +72,9 @@ def mock_url(monkeypatch):
             method = request.get_method()
             resp = mock_pairs.get((url, method), None)
             if resp is None:
-                raise RuntimeError('No mock response set for url')
+                raise RuntimeError(
+                    "No mock response set for url '{}'".format(url, method)
+                )
 
             resp['text'] = resp.get('text', '')
             resp['headers'] = resp.get('headers', {})
