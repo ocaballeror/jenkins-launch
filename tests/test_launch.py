@@ -355,87 +355,51 @@ def test_get_url_stream(monkeypatch):
         next(resp)
 
 
-def test_build_no_params(mock_url):
+def test_build_no_params(mock_url, unparametrized):
     headers = {'Location': 'some queue'}
-    mock_url(
-        [
-            # Return build location
-            dict(url=g_url + '/build', headers=headers, method='POST'),
-            # Set build properties as not parametrized
-            dict(url=g_url + '/api/json', text='{}'),
-        ]
-    )
+    mock_url(dict(url=g_url + '/build', headers=headers, method='POST'))
 
     # Launch build
     assert launch_build(g_url, g_auth, {}) == 'some queue'
 
 
-def test_build_with_params(mock_url):
+def test_build_with_params(mock_url, monkeypatch):
     headers = {'Location': 'param queue'}
 
     # Set build properties as parametrized
-    props = {'property': [{'parameterDefinitions': ['thing']}]}
-    props = json.dumps(props)
+    def mock_get_job_params(*args):
+        return {'param': None}
+
+    monkeypatch.setattr(launch_jenkins, 'get_job_params', mock_get_job_params)
 
     mock_url(
-        [
-            dict(
-                url=g_url + '/buildWithParameters',
-                headers=headers,
-                method='POST',
-            ),
-            dict(url=g_url + '/api/json', text=props),
-        ]
+        dict(
+            url=g_url + '/buildWithParameters', headers=headers, method='POST'
+        )
     )
 
     # Launch parametrized build
     assert launch_build(g_url, g_auth) == 'param queue'
-    assert launch_build(g_url, g_auth, {'a': 'b'}) == 'param queue'
+    assert launch_build(g_url, g_auth, {'param': 'asdf'}) == 'param queue'
 
 
-def test_build_unparametrized_with_params(monkeypatch):
-    """
-    Check that an error is raised when the user passes parameters to a
-    non-parametrized job.
-    """
-    monkeypatch.setattr(launch_jenkins, 'is_parametrized', lambda x, y: False)
-    with pytest.raises(RuntimeError) as error:
-        launch_build(g_url, g_auth, params={'key': 'value'})
-        assert 'parameters' in str(error)
-
-
-def test_launch_error(mock_url):
-    mock_url(
-        [
-            dict(url=g_url + '/api/json', text='{}'),
-            dict(url=g_url + '/build', status_code=400, method='POST'),
-        ]
-    )
+def test_launch_error(mock_url, unparametrized):
+    mock_url(dict(url=g_url + '/build', status_code=400, method='POST'))
 
     with pytest.raises(HTTPError):
         launch_build(g_url, g_auth)
 
 
-def test_launch_error_no_queue(mock_url):
+def test_launch_error_no_queue(mock_url, unparametrized):
     headers = {'Header': 'value'}
-    mock_url(
-        [
-            dict(url=g_url + '/build', headers=headers, method='POST'),
-            dict(url=g_url + '/api/json', text='{}'),
-        ]
-    )
+    mock_url(dict(url=g_url + '/build', headers=headers, method='POST'))
 
     # Response has no location header
     with pytest.raises(AssertionError):
         launch_build(g_url, g_auth, {})
 
     headers = {'Location': 'this is not the word you are looking for'}
-    mock_url(
-        [
-            dict(url=g_url + '/build', headers=headers, method='POST'),
-            dict(url=g_url + '/api/json', text='{}'),
-        ]
-    )
+    mock_url(dict(url=g_url + '/build', headers=headers, method='POST'))
     # Location has no queue url
     with pytest.raises(AssertionError):
         launch_build(g_url, g_auth, {})
