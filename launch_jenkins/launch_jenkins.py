@@ -133,7 +133,7 @@ def parse_kwarg(kwarg):
     count = kwarg.count('=')
     if count == 0:
         msg = 'Invalid job argument: "{}". Please use key=value format'
-        raise ValueError(msg)
+        raise ValueError(msg.format(kwarg))
 
     if count == 1 and kwarg.endswith('='):
         return kwarg[:-1], ''
