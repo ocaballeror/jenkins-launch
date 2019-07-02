@@ -339,18 +339,56 @@ def get_url(url, auth, data=None, stream=False):
         return response
 
 
-def is_parametrized(url, auth):
+def get_job_params(url, auth):
     """
-    Determine if the build is parametrized or not.
+    Get the list of allowed parameters and their respective choices.
     """
     url = url.rstrip('/') + '/api/json'
-
     response = get_url(url, auth=auth)
     response = json.loads(response.text)
-    props = response.get('property', False)
-    if not props:
-        return False
-    return any('parameterDefinitions' in prop for prop in props)
+    props = response.get('property', [])
+    definition_prop = 'hudson.model.ParametersDefinitionProperty'
+    defs = next(
+        (
+            p['parameterDefinitions']
+            for p in props
+            if p.get('_class', '') == definition_prop
+        ),
+        [],
+    )
+    if not defs:
+        return {}
+
+    params = {}
+    for definition in defs:
+        params[definition['name']] = definition.get('choices', None)
+    return params
+
+
+def validate_params(definitions, supplied):
+    """
+    Check the dict of supplied params against the list of allowed choices.
+    """
+    if not supplied:
+        return True
+
+    if supplied and not definitions:
+        errlog('Err: This build does not take any parameters')
+        raise SystemExit
+
+    nonexistent = [p for p in supplied if p not in definitions]
+    if nonexistent:
+        nonexistent = ', '.join(nonexistent)
+        errlog('Err: These parameters do not exist:', nonexistent)
+        raise SystemExit
+
+    for key, value in supplied.items():
+        choices = definitions[key]
+        if choices is None:
+            continue
+        if value not in choices:
+            errlog("Invalid choice '{}' for parameter '{}'".format(value, key))
+            raise SystemExit
 
 
 def launch_build(url, auth, params=None):
@@ -358,11 +396,10 @@ def launch_build(url, auth, params=None):
     Submit job and return the queue item location.
     """
     url = url.rstrip('/') + '/'
-    has_params = is_parametrized(url, auth)
-    if params and not has_params:
-        raise RuntimeError("This build doesn't accept any parameters")
+    job_params = get_job_params(url, auth)
+    validate_params(job_params, params)
 
-    url += 'buildWithParameters' if has_params else 'build'
+    url += 'buildWithParameters' if job_params else 'build'
     log('Sending build request')
     data = params or ""  # urllib will send a POST with an empty string
     response = get_url(url, data=data, auth=auth)
