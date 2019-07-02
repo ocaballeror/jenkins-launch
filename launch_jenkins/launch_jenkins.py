@@ -30,7 +30,13 @@ else:
     from collections import Mapping, MutableMapping  # noqa:F401
 
 
-CONFIG = {'dump': False, 'quiet': False, 'progress': False, 'mode': 'full'}
+CONFIG = {
+    'dump': False,
+    'quiet': False,
+    'progress': False,
+    'mode': 'full',
+    'debug': False,
+}
 
 __version__ = '2.1.2'
 
@@ -162,6 +168,9 @@ def parse_args():
         '--dump', help='Print job output to stdout', action='store_true'
     )
     parser.add_argument(
+        '--debug', help='Print debug output', action='store_true'
+    )
+    parser.add_argument(
         '-q', '--quiet', help='Do not print user messages', action='store_true'
     )
     parser.add_argument(
@@ -196,6 +205,7 @@ def parse_args():
     CONFIG['dump'] = args.dump
     CONFIG['quiet'] = args.quiet
     CONFIG['progress'] = args.progress
+    CONFIG['debug'] = args.debug
     if args.launch_only:
         CONFIG['mode'] = 'launch'
     elif args.wait_only:
@@ -211,8 +221,7 @@ def parse_args():
         params = {k: v for k, v in map(parse_kwarg, params)}
     except Exception as error:
         msg = str(error) or 'Job arguments are not properly formatted'
-        errlog(msg)
-        raise SystemExit
+        raise ValueError(msg)
     return (job, (args.user, args.token), params)
 
 
@@ -373,22 +382,21 @@ def validate_params(definitions, supplied):
         return True
 
     if supplied and not definitions:
-        errlog('Err: This build does not take any parameters')
-        raise SystemExit
+        raise ValueError('This build does not take any parameters')
 
     nonexistent = [p for p in supplied if p not in definitions]
     if nonexistent:
         nonexistent = ', '.join(nonexistent)
-        errlog('Err: These parameters do not exist:', nonexistent)
-        raise SystemExit
+        raise ValueError('These parameters do not exist:', nonexistent)
 
     for key, value in supplied.items():
         choices = definitions[key]
         if choices is None:
             continue
         if value not in choices:
-            errlog("Invalid choice '{}' for parameter '{}'".format(value, key))
-            raise SystemExit
+            raise ValueError(
+                "Invalid choice '{}' for parameter '{}'".format(value, key)
+            )
 
 
 def launch_build(url, auth, params=None):
@@ -406,12 +414,10 @@ def launch_build(url, auth, params=None):
 
     assert (
         'Location' in response.headers
-    ), 'Err: Something went wrong with the Jenkins API'
+    ), 'Something went wrong with the Jenkins API'
     location = response.headers['Location']
 
-    assert (
-        'queue' in location
-    ), 'Err: Something went wrong with the Jenkins API'
+    assert 'queue' in location, 'Something went wrong with the Jenkins API'
     return location
 
 
@@ -424,7 +430,7 @@ def wait_queue_item(location, auth, interval=5.0):
         response = get_url(queue, auth=auth)
         response = json.loads(response.text)
         if response.get('cancelled', False):
-            errlog('Err: Build was cancelled', file=sys.stderr)
+            errlog('Build was cancelled', file=sys.stderr)
             sys.exit(1)
         if response.get('executable', False):
             build_url = response['executable']['url']
@@ -508,4 +514,10 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        if CONFIG['debug']:
+            raise
+        errlog('Err:', e)
+        sys.exit(1)
