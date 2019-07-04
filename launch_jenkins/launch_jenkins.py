@@ -282,7 +282,24 @@ def is_progressbar_capable():
     return progress
 
 
-def show_progress(msg, duration):
+def format_millis(millis):
+    """
+    Format milliseconds as mm:ss.
+    """
+    millis = int(millis / 1000)
+    if millis >= 3600:
+        formatted = '%d:%02d:%02d' % (
+            millis / 3600,
+            (millis % 3600) / 60,
+            (millis % 3600) % 60,
+        )
+    else:
+        formatted = '%02d:%02d' % (millis / 60, millis % 60)
+
+    return formatted
+
+
+def show_progress(msg, duration, millis=None):
     """
     Show a message and a progress bar for the specified amount of time.
 
@@ -297,11 +314,16 @@ def show_progress(msg, duration):
         return
 
     msg = msg.strip() + ' '
+    out_msg = msg
     elapsed = 0
     while elapsed < duration:
-        spaces = get_stderr_size_unix().columns - len(msg) - 3
+        if millis is not None:
+            out_msg = '[{}] {}'.format(format_millis(millis), msg)
+            millis += 100
+
+        spaces = get_stderr_size_unix().columns - len(out_msg) - 3
         spaces = max(spaces, 40)
-        out = '{}{}  {}'.format(msg, '.' * spaces, next(bar))
+        out = '{}{}  {}'.format(out_msg, '.' * spaces, next(bar))
         log(out, end='\r')
         time.sleep(0.1)
         elapsed += 0.1
@@ -447,19 +469,26 @@ def wait_for_job(build_url, auth, interval=5.0):
         raise error
 
     response = json.loads(response.text)
+    last_stage = None
     while True:
         if response.get('status', 'IN_PROGRESS') != 'IN_PROGRESS':
             result = response['status']
             log('\nThe job ended in', result)
-            ret = (result.lower() == 'success')
+            ret = result.lower() == 'success'
             break
+
+        msg = 'Build %s in progress' % response['name']
+        millis = None
         for stage in response.get('stages', []):
-            if stage.get('status') == 'IN_PROGRESS':
-                msg = '[Stage] %s' % stage['name']
-                break
-        else:
-            msg = 'Build %s in progress' % response['name']
-        show_progress(msg, interval)
+            if stage.get('status') != 'IN_PROGRESS':
+                continue
+            msg = stage['name']
+            millis = stage.get('durationMillis', None)
+            if stage['name'] != last_stage:
+                last_stage = stage['name']
+                msg = '\n' + msg
+            break
+        show_progress(msg, interval, millis=millis)
         response = get_url(poll_url, auth=auth)
         response = json.loads(response.text)
     return ret

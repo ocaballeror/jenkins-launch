@@ -1,3 +1,5 @@
+import pytest
+
 from launch_jenkins import launch_jenkins
 from launch_jenkins import log
 from launch_jenkins import errlog
@@ -44,3 +46,19 @@ def test_caseinsensitivedict():
     assert cid.copy() == cid
     assert cid != 'somethingelse'
     assert repr(cid)
+
+
+@pytest.mark.parametrize('millis,expect', [
+    (0, '00:00'),
+    (1000, '00:01'),
+    (60000, '01:00'),
+    (61000, '01:01'),
+    (120000, '02:00'),
+    (630000, '10:30'),
+    (3599000, '59:59'),
+    (3600000, '1:00:00'),
+    (3661000, '1:01:01'),
+    (36061000, '10:01:01'),
+])
+def test_format_millis(millis, expect):
+    assert launch_jenkins.format_millis(millis) == expect
