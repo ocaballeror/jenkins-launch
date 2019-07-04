@@ -296,7 +296,7 @@ def show_progress(msg, duration):
         time.sleep(duration)
         return
 
-    msg += '  '
+    msg = msg.strip() + ' '
     elapsed = 0
     while elapsed < duration:
         spaces = get_stderr_size_unix().columns - len(msg) - 3
