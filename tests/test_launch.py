@@ -477,12 +477,12 @@ def test_wait_queue_item_cancelled(mock_url):
 def test_wait_for_job(mock_url):
     def set_finished():
         time.sleep(0.5)
-        resp = {'result': 'success', 'displayName': 'name'}
+        resp = {'status': 'success', 'name': 'name'}
         resp = json.dumps(resp)
-        mock_url(dict(url=g_url + '/api/json', text=resp))
+        mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
-    resp = {'displayName': 'name'}
-    mock_url(dict(url=g_url + '/api/json', text=json.dumps(resp)))
+    resp = {'name': 'name'}
+    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
     t0 = time.time()
@@ -498,12 +498,12 @@ def test_wait_for_job_fail(mock_url):
 
     def set_finished():
         time.sleep(0.5)
-        resp = {'result': 'failure', 'displayName': 'name'}
+        resp = {'status': 'FAILED', 'name': 'name'}
         resp = json.dumps(resp)
-        mock_url(dict(url=g_url + '/api/json', text=resp))
+        mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
-    resp = {'displayName': 'name'}
-    mock_url(dict(url=g_url + '/api/json', text=json.dumps(resp)))
+    resp = {'name': 'name'}
+    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
     assert not wait_for_job(g_url, g_auth, 0.2)

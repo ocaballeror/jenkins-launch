@@ -437,7 +437,7 @@ def wait_for_job(build_url, auth, interval=5.0):
     Wait until the build finishes.
     """
     ret = 0
-    poll_url = build_url.rstrip('/') + '/api/json'
+    poll_url = build_url.rstrip('/') + '/wfapi/describe'
     try:
         response = get_url(poll_url, auth=auth)
     except HTTPError as error:
@@ -448,12 +448,17 @@ def wait_for_job(build_url, auth, interval=5.0):
 
     response = json.loads(response.text)
     while True:
-        if response.get('result', False):
-            result = response['result']
-            log('\nThe job ended in', response['result'])
-            ret = result.lower() == 'success'
+        if response.get('status', 'IN_PROGRESS') != 'IN_PROGRESS':
+            result = response['status']
+            log('\nThe job ended in', result)
+            ret = (result.lower() == 'success')
             break
-        msg = 'Build %s in progress' % response['displayName']
+        for stage in response.get('stages', []):
+            if stage.get('status') == 'IN_PROGRESS':
+                msg = '[Stage] %s' % stage['name']
+                break
+        else:
+            msg = 'Build %s in progress' % response['name']
         show_progress(msg, interval)
         response = get_url(poll_url, auth=auth)
         response = json.loads(response.text)
