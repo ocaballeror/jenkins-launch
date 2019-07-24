@@ -211,14 +211,9 @@ def parse_args():
     elif args.wait_only:
         CONFIG['mode'] = 'wait'
 
-    if not args.wait_only:
-        job, params = parse_job_url(args.job)
-        params += args.params
-    else:
-        job, params = args.job, args.params
-
+    job = parse_job_url(args.job, has_number=args.wait_only)
     try:
-        params = {k: v for k, v in map(parse_kwarg, params)}
+        params = {k: v for k, v in map(parse_kwarg, args.params)}
     except Exception as error:
         msg = str(error) or 'Job arguments are not properly formatted'
         raise ValueError(msg)
@@ -239,25 +234,22 @@ there is a build number at the end."
     return job_url
 
 
-def parse_job_url(job):
+def parse_job_url(job, has_number=False):
     """
     Parse the user input job url and return it along with a list of parameters.
     """
     job = job.rstrip('/')
-    if re.search(r'/job/[^/]*$', job):
-        return job, []
 
-    url = re.search('^(.*)/build$', job)
-    if url:
-        return url.group(1), []
-
-    url = re.search(r'^(.*)/buildWithParameters\??(.*)$', job)
-    if url:
-        args = url.group(2).split('&')
-        if args == ['']:
-            args = []
-        return url.group(1), args
-
+    if has_number:
+        if not re.search(r'/job/[^/]*/[0-9]+$', job):
+            raise ValueError('Invalid job URL. Expected a build number')
+        return job
+    else:
+        if re.search(r'/job/[^/]*$', job):
+            return job
+        url = re.search('^(.*)/build(WithParameters)?$', job)
+        if url:
+            return url.group(1)
     raise ValueError('Invalid job URL')
 
 

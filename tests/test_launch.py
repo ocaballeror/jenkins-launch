@@ -132,17 +132,21 @@ def test_optional_flags(monkeypatch, config):
 
 
 @pytest.mark.parametrize(
-    'arg, expect',
-    [('', 'full'), ('-l', 'launch'), ('-w', 'wait')],
+    'arg, url, mode',
+    [
+        ('', g_url, 'full'),
+        ('-l', g_url, 'launch'),
+        ('-w', g_url + '/42', 'wait'),
+    ],
     ids=['full', 'launch only', 'wait only'],
 )
-def test_launch_wait_only(arg, expect, monkeypatch, config):
-    new_argv = ['python'] + g_params
+def test_launch_wait_only(arg, url, mode, monkeypatch, config):
+    new_argv = ['python', '-j', url, '-u', g_auth[0], '-t', g_auth[1]]
     if arg:
         new_argv += [arg]
     monkeypatch.setattr(sys, 'argv', new_argv)
     parse_args()
-    assert launch_jenkins.CONFIG['mode'] == expect
+    assert launch_jenkins.CONFIG['mode'] == mode
 
 
 @pytest.mark.parametrize(
@@ -284,39 +288,31 @@ def test_parse_build_url():
     ],
 )
 def test_parse_job_url(url):
-    assert parse_job_url(url) == (g_url, [])
-
-
-def test_parse_job_url_params():
-    build_url = g_url + '/buildWithParameters?a=b'
-    assert parse_job_url(build_url) == (g_url, ['a=b'])
-
-    build_url = g_url + '/buildWithParameters?a=b&c=d'
-    assert parse_job_url(build_url) == (g_url, ['a=b', 'c=d'])
+    assert parse_job_url(url) == g_url
 
 
 @pytest.mark.parametrize(
-    'job_url',
+    'job_url, has_number',
     [
-        'http',
-        g_url + '/asdf',
-        g_url + '/build?a=b',
-        g_url + '/buildwiththings?a=b',
-        g_url + '/buildwithparameters',
-        g_url + '/buildwithparameters?a=b',
+        ('http', False),
+        (g_url + '/asdf', False),
+        (g_url + '/BUILD', False),
+        (g_url + '/buildWithParameters?a=b', False),
+        (g_url, True),
+        (g_url + '/42', False),
     ],
     ids=[
         'not a url',
-        'does last section is not a job',
-        '/build takes no params',
-        'invalid api name',
-        'lowercase buildwithparameters',
-        'lowercase buildwithparameters with params',
+        'last section is not a job',
+        '/build should be lowercase',
+        'no parameters allowed in url',
+        'expected job number',
+        'unexpected job number',
     ],
 )
-def test_parse_job_url_error(job_url):
+def test_parse_job_url_error(job_url, has_number):
     with pytest.raises(ValueError) as error:
-        parse_job_url(job_url)
+        parse_job_url(job_url, has_number)
     assert 'invalid job url' in str(error.value).lower()
 
 
