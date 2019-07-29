@@ -23,6 +23,7 @@ from launch_jenkins import get_job_params
 from launch_jenkins import launch_build
 from launch_jenkins import wait_queue_item
 from launch_jenkins import wait_for_job
+from launch_jenkins import retrieve_log
 from launch_jenkins import save_log_to_file
 from launch_jenkins import parse_args
 from launch_jenkins import parse_build_url
@@ -528,10 +529,16 @@ def test_wait_for_job_nonexistent(monkeypatch):
         assert str(error.value) == 'Build #%s does not exist' % build_number
 
 
-def test_save_log_to_file(mock_url):
+def test_retrieve_log(mock_url):
     content = 'some log content here'
-    filename = 'thing_other_master.txt'
     mock_url(dict(url=g_url + '/consoleText', text=content))
+    assert retrieve_log(g_url, g_auth) == content
+
+
+def test_save_log_to_file(monkeypatch):
+    content = 'some log content here'
+    monkeypatch.setattr(launch_jenkins, 'retrieve_log', lambda a, b: content)
+    filename = 'thing_other_master.txt'
     try:
         save_log_to_file(g_url, g_auth)
         assert os.path.isfile(filename)
