@@ -469,15 +469,16 @@ def wait_for_job(build_url, auth, interval=5.0):
         raise error
 
     response = json.loads(response.text)
+    name = response.get('name', '')
     last_stage = None
     while True:
         if response.get('status', 'IN_PROGRESS') != 'IN_PROGRESS':
             result = response['status']
-            log('\nThe job ended in', result)
+            log('\nJob', name, 'ended in', result)
             ret = result.lower() == 'success'
             break
 
-        msg = 'Build %s in progress' % response['name']
+        msg = 'Build %s in progress' % name
         millis = None
         for stage in response.get('stages', []):
             if stage.get('status') != 'IN_PROGRESS':
@@ -494,6 +495,19 @@ def wait_for_job(build_url, auth, interval=5.0):
     return ret
 
 
+def retrieve_log(build_url, auth):
+    """
+    Get the build log and return it as a string.
+    """
+    build_url = build_url.rstrip('/') + '/'
+    url = build_url + 'consoleText'
+    log = ''.join(
+        block.text.decode('utf-8', errors='ignore')
+        for block in get_url(url, auth=auth, stream=True)
+    )
+    return log
+
+
 def save_log_to_file(build_url, auth):
     """
     Save the build log to a file.
@@ -507,9 +521,7 @@ def save_log_to_file(build_url, auth):
         log_file = job_name + '.txt'
         file = io.open(log_file, 'w', encoding='utf-8')
 
-    url = build_url + 'consoleText'
-    for block in get_url(url, auth=auth, stream=True):
-        file.write(block.text.decode('utf-8', errors='ignore'))
+    file.write(retrieve_log(build_url, auth))
 
     if not CONFIG['dump']:
         file.close()
