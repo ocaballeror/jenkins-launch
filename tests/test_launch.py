@@ -35,7 +35,7 @@ from .conftest import FakeResponse
 from .test_helper import assert_empty_progress
 from .test_helper import assert_no_progressbar
 from .test_helper import assert_progressbar
-from .test_helper import terminal_size  # noqa: F401
+from .test_helper import assert_progressbar_millis
 from .test_helper import raise_error
 
 

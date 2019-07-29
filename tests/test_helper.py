@@ -1,8 +1,4 @@
-import os
 import time
-from collections import namedtuple
-
-import pytest
 
 from launch_jenkins import show_progress
 
@@ -47,27 +43,6 @@ def assert_empty_progress(capsys):
     assert time.time() - t0 >= 0.4
     assert not outerr.err
     assert not outerr.out
-
-
-@pytest.fixture(scope='function')
-def terminal_size(monkeypatch):
-    """
-    Set a fake os.get_terminal_size() function that returns (30, 30).
-    """
-
-    def fake_terminal_size(*args, **kwargs):
-        return Size(30, 30)
-
-    Size = namedtuple('terminal_size', 'columns rows')
-    has_func = hasattr(os, 'get_terminal_size')
-    if not has_func:
-        os.get_terminal_size = fake_terminal_size
-    else:
-        monkeypatch.setattr(os, 'get_terminal_size', fake_terminal_size)
-    yield
-
-    if not has_func:
-        del os.get_terminal_size
 
 
 def raise_error(*args, **kwargs):

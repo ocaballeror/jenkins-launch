@@ -1,4 +1,6 @@
+import os
 import sys
+from collections import namedtuple
 
 import pytest
 
@@ -97,3 +99,24 @@ def mock_url(monkeypatch):
         monkeypatch.setattr(launch_jenkins, 'urlopen', mock)
 
     return ret
+
+
+@pytest.fixture(scope='function')
+def terminal_size(monkeypatch):
+    """
+    Set a fake os.get_terminal_size() function that returns (30, 30).
+    """
+
+    def fake_terminal_size(*args, **kwargs):
+        return Size(30, 30)
+
+    Size = namedtuple('terminal_size', 'columns rows')
+    has_func = hasattr(os, 'get_terminal_size')
+    if not has_func:
+        os.get_terminal_size = fake_terminal_size
+    else:
+        monkeypatch.setattr(os, 'get_terminal_size', fake_terminal_size)
+    yield
+
+    if not has_func:
+        del os.get_terminal_size
