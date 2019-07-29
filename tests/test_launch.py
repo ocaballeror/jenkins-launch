@@ -33,10 +33,10 @@ from launch_jenkins import is_progressbar_capable
 from launch_jenkins import HTTPError
 
 from .conftest import FakeResponse
-from .test_helper import assert_empty_progress
-from .test_helper import assert_no_progressbar
-from .test_helper import assert_progressbar
-from .test_helper import assert_progressbar_millis
+from .test_helper import assert_show_empty_progress
+from .test_helper import assert_show_no_progressbar
+from .test_helper import assert_show_progressbar
+from .test_helper import assert_show_progressbar_millis
 from .test_helper import raise_error
 
 
@@ -624,7 +624,7 @@ def test_show_progress(capsys, monkeypatch, terminal_size):
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
     assert is_progressbar_capable()
-    assert_progressbar(capsys)
+    assert_show_progressbar(capsys)
 
 
 def test_show_progress_millis(capsys, tty):
@@ -632,7 +632,7 @@ def test_show_progress_millis(capsys, tty):
     Write a progressbar with time information and verify that the output looks
     OK.
     """
-    assert_progressbar_millis(capsys)
+    assert_show_progressbar_millis(capsys)
 
 
 def test_show_progress_no_tty(capsys, monkeypatch, terminal_size):
@@ -642,7 +642,7 @@ def test_show_progress_no_tty(capsys, monkeypatch, terminal_size):
     monkeypatch.setattr(sys, 'platform', 'notwin32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: False)
     assert not is_progressbar_capable()
-    assert_no_progressbar(capsys)
+    assert_show_no_progressbar(capsys)
 
 
 def test_show_progress_win32(capsys, monkeypatch, terminal_size):
@@ -652,7 +652,7 @@ def test_show_progress_win32(capsys, monkeypatch, terminal_size):
     monkeypatch.setattr(sys, 'platform', 'win32')
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
     assert not is_progressbar_capable()
-    assert_no_progressbar(capsys)
+    assert_show_no_progressbar(capsys)
 
 
 def test_show_progress_no_get_size(capsys, monkeypatch):
@@ -664,7 +664,7 @@ def test_show_progress_no_get_size(capsys, monkeypatch):
     monkeypatch.setattr(sys.stderr, 'isatty', lambda: True)
     monkeypatch.setattr(launch_jenkins, 'get_stderr_size_unix', raise_error)
     assert not is_progressbar_capable()
-    assert_no_progressbar(capsys)
+    assert_show_no_progressbar(capsys)
 
 
 def test_show_progress_force(capsys, monkeypatch, terminal_size):
@@ -703,4 +703,4 @@ def test_no_progress_quiet(capsys, monkeypatch, terminal_size):
     assert is_progressbar_capable()
 
     monkeypatch.setitem(launch_jenkins.CONFIG, 'quiet', True)
-    assert_empty_progress(capsys)
+    assert_show_empty_progress(capsys)
