@@ -627,6 +627,14 @@ def test_show_progress(capsys, monkeypatch, terminal_size):
     assert_progressbar(capsys)
 
 
+def test_show_progress_millis(capsys, tty):
+    """
+    Write a progressbar with time information and verify that the output looks
+    OK.
+    """
+    assert_progressbar_millis(capsys)
+
+
 def test_show_progress_no_tty(capsys, monkeypatch, terminal_size):
     """
     Check that we show a crippled progress bar when stderr is not a terminal.
