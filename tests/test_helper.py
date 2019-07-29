@@ -1,6 +1,7 @@
 import time
 
 from launch_jenkins import show_progress
+from launch_jenkins import format_millis
 
 
 def assert_progressbar(capsys):
@@ -14,6 +15,22 @@ def assert_progressbar(capsys):
     assert time.time() - t0 >= 0.4
     assert msg in outerr.err
     assert '.' * 10 in outerr.err
+    assert not outerr.out
+
+
+def assert_progressbar_millis(capsys, millis=1100):
+    """
+    Call the `show_progress` function with the `millis` parameter and assert
+    that a progress bar is shown with the associated time information.
+    """
+    msg = 'message'
+    duration = 0.5
+    show_progress(msg, duration, millis=millis)
+    outerr = capsys.readouterr()
+    print(outerr.err)
+    assert msg in outerr.err
+    assert '.' * 10 in outerr.err
+    assert format_millis(millis + duration * 1000) in outerr.err
     assert not outerr.out
 
 
