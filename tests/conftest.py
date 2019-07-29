@@ -120,3 +120,11 @@ def terminal_size(monkeypatch):
 
     if not has_func:
         del os.get_terminal_size
+
+
+@pytest.fixture(scope='function')
+def tty(monkeypatch, terminal_size):
+    """
+    Set up environment so it looks like a valid TTY.
+    """
+    monkeypatch.setattr(launch_jenkins, 'is_progressbar_capable', lambda: True)
