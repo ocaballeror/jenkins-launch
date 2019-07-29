@@ -37,6 +37,7 @@ from .test_helper import assert_show_empty_progress
 from .test_helper import assert_show_no_progressbar
 from .test_helper import assert_show_progressbar
 from .test_helper import assert_show_progressbar_millis
+from .test_helper import assert_progressbar_millis
 from .test_helper import raise_error
 
 
@@ -527,6 +528,41 @@ def test_wait_for_job_nonexistent(monkeypatch):
     with pytest.raises(HTTPError) as error:
         wait_for_job(build_url, None)
         assert str(error.value) == 'Build #%s does not exist' % build_number
+
+
+def test_wait_for_job_get_duration(mock_url, capsys, tty):
+    """
+    Return the list of stages and assert that wait_for_job can find the current
+    one and extract its duration.
+    """
+
+    def set_finished():
+        time.sleep(0.5)
+        resp = {'status': 'success', 'name': 'name'}
+        resp = json.dumps(resp)
+        mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
+
+    durationMillis = 1200
+    resp = {
+        'name': 'name',
+        'stages': [
+            {'name': 'stage1', 'status': 'success'},
+            {'name': 'stage2', 'status': 'success'},
+            {
+                'name': 'stage3',
+                'status': 'IN_PROGRESS',
+                'durationMillis': durationMillis,
+            },
+            {'name': 'stage1', 'status': 'pending'},
+        ],
+    }
+    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
+    Thread(target=set_finished).start()
+
+    t0 = time.time()
+    assert wait_for_job(g_url, g_auth, 0.2)
+    assert time.time() - t0 >= 0.5
+    assert_progressbar_millis(capsys, 'stage3', durationMillis)
 
 
 def test_retrieve_log(mock_url):
