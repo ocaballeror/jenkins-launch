@@ -479,17 +479,27 @@ def test_wait_queue_item_cancelled(mock_url):
 def test_wait_for_job(mock_url):
     def set_finished():
         time.sleep(0.5)
-        resp = {'status': 'success', 'name': 'name'}
+        resp = {'status': 'SUCCESS', 'name': 'name'}
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
-    resp = {'name': 'name'}
+    def set_in_progress():
+        time.sleep(0.5)
+        resp = {'status': 'IN_PROGRESS', 'name': 'name'}
+        resp = json.dumps(resp)
+        mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
+
+    def update_status():
+        set_in_progress()
+        set_finished()
+
+    resp = {'name': 'name', 'status': 'NOT_EXECUTED'}
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
-    Thread(target=set_finished).start()
+    Thread(target=update_status).start()
 
     t0 = time.time()
     assert wait_for_job(g_url, g_auth, 0.2)
-    assert time.time() - t0 >= 0.5
+    assert time.time() - t0 >= 1
 
 
 def test_wait_for_job_fail(mock_url):
