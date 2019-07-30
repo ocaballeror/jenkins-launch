@@ -37,7 +37,7 @@ CONFIG = {
     'mode': 'full',
     'debug': False,
 }
-
+IN_PROGRESS = ('IN_PROGRESS', 'NOT_EXECUTED')
 __version__ = '2.1.4'
 
 
@@ -460,19 +460,19 @@ def wait_for_job(build_url, auth, interval=5.0):
     """
     ret = 0
     poll_url = build_url.rstrip('/') + '/wfapi/describe'
-    try:
-        response = get_url(poll_url, auth=auth)
-    except HTTPError as error:
-        if error.code == 404:
-            build_number = build_url.rstrip('/').rpartition('/')[2]
-            error.msg = 'Build #%s does not exist' % build_number
-        raise error
-
-    response = json.loads(response.text)
-    name = response.get('name', '')
     last_stage = None
     while True:
-        if response.get('status', 'IN_PROGRESS') != 'IN_PROGRESS':
+        try:
+            response = get_url(poll_url, auth=auth)
+        except HTTPError as error:
+            if error.code == 404:
+                build_number = build_url.rstrip('/').rpartition('/')[2]
+                error.msg = 'Build #%s does not exist' % build_number
+            raise error
+        response = json.loads(response.text)
+        name = response.get('name', '')
+
+        if response.get('status', 'IN_PROGRESS') not in IN_PROGRESS:
             result = response['status']
             log('\nJob', name, 'ended in', result)
             ret = result.lower() == 'success'
@@ -490,8 +490,6 @@ def wait_for_job(build_url, auth, interval=5.0):
                 msg = '\n' + msg
             break
         show_progress(msg, interval, millis=millis)
-        response = get_url(poll_url, auth=auth)
-        response = json.loads(response.text)
     return ret
 
 
