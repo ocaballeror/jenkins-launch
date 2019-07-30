@@ -407,10 +407,10 @@ def validate_params(definitions, supplied):
         choices = definitions[key]
         if choices is None:
             continue
-        if value not in choices:
-            raise ValueError(
-                "Invalid choice '{}' for parameter '{}'".format(value, key)
-            )
+        if str(value) not in choices:
+            msg = "Invalid choice '{}' for parameter '{}'."
+            msg += "\n\nValid choices are {}"
+            raise ValueError(msg.format(value, key, choices))
 
 
 def launch_build(url, auth, params=None):
