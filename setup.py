@@ -7,6 +7,18 @@ setup(
     version=__version__,
     author="Oscar Caballero",
     author_email="ocaballeror@tutanota.com",
+    classifiers=[
+        'Development Status :: 2 - Beta',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Build Tools',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: Implementation :: CPython',
+    ],
     packages=['launch_jenkins'],
     entry_points={
         'console_scripts': [
