@@ -38,7 +38,7 @@ CONFIG = {
     'debug': False,
 }
 IN_PROGRESS = ('IN_PROGRESS', 'NOT_EXECUTED')
-__version__ = '2.1.4'
+__version__ = '2.1.5'
 
 
 class CaseInsensitiveDict(MutableMapping):
