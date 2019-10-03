@@ -435,62 +435,80 @@ def launch_build(url, auth, params=None):
     return location
 
 
+def get_queue_status(location, auth):
+    """
+    Check the status of a queue item. Returns the build url if the job is
+    already executing, or None if it's still in the queue.
+    """
+    queue = location.rstrip('/') + '/api/json'
+    response = get_url(queue, auth=auth)
+    response = json.loads(response.text)
+    if response.get('cancelled', False):
+        raise RuntimeError('Build was cancelled')
+    if response.get('executable', False):
+        return response['executable']['url']
+    return None
+
+
 def wait_queue_item(location, auth, interval=5.0):
     """
     Wait until the item starts building.
     """
-    queue = location.rstrip('/') + '/api/json'
     while True:
-        response = get_url(queue, auth=auth)
-        response = json.loads(response.text)
-        if response.get('cancelled', False):
-            errlog('Build was cancelled', file=sys.stderr)
-            sys.exit(1)
-        if response.get('executable', False):
-            build_url = response['executable']['url']
+        job_url = get_queue_status(location, auth)
+        if job_url is not None:
             break
         show_progress('Job queued', interval)
     log('')
-    return build_url
+    return job_url
+
+
+def get_job_status(build_url, auth):
+    """
+    Check the status of a running build.
+
+    Returns a tuple with the status of the build and the current stage.
+    The status is True on successful exit, False on failure or None if the
+    build is still running.
+    """
+    poll_url = build_url.rstrip('/') + '/wfapi/describe'
+    try:
+        response = get_url(poll_url, auth=auth)
+    except HTTPError as error:
+        if error.code == 404:
+            build_number = build_url.rstrip('/').rpartition('/')[2]
+            error.msg = 'Build #%s does not exist' % build_number
+        raise
+    response = json.loads(response.text)
+    name = response.get('name', '')
+
+    if response.get('status', 'IN_PROGRESS') not in IN_PROGRESS:
+        result = response['status']
+        log('\nJob', name, 'ended in', result)
+        return result.lower() == 'success', response['stages'][-1]
+
+    stages = [s for s in response['stages'] if s['status'] in IN_PROGRESS]
+    return None, stages[0]
 
 
 def wait_for_job(build_url, auth, interval=5.0):
     """
     Wait until the build finishes.
     """
-    ret = 0
-    poll_url = build_url.rstrip('/') + '/wfapi/describe'
+    name = '#' + build_url.rstrip('/').split('/')[-1]
     last_stage = None
     while True:
-        try:
-            response = get_url(poll_url, auth=auth)
-        except HTTPError as error:
-            if error.code == 404:
-                build_number = build_url.rstrip('/').rpartition('/')[2]
-                error.msg = 'Build #%s does not exist' % build_number
-            raise error
-        response = json.loads(response.text)
-        name = response.get('name', '')
-
-        if response.get('status', 'IN_PROGRESS') not in IN_PROGRESS:
-            result = response['status']
-            log('\nJob', name, 'ended in', result)
-            ret = result.lower() == 'success'
-            break
-
+        status, stage = get_job_status(build_url, auth)
+        if status is not None:
+            return status
         msg = 'Build %s in progress' % name
         millis = None
-        for stage in response.get('stages', []):
-            if stage.get('status') != 'IN_PROGRESS':
-                continue
-            msg = stage['name']
-            millis = stage.get('durationMillis', None)
-            if stage['name'] != last_stage:
-                last_stage = stage['name']
-                msg = '\n' + msg
-            break
+        msg = stage['name']
+        millis = stage.get('durationMillis', None)
+        if stage['name'] != last_stage:
+            last_stage = stage['name']
+            msg = '\n' + msg
         show_progress(msg, interval, millis=millis)
-    return ret
 
 
 def retrieve_log(build_url, auth):
