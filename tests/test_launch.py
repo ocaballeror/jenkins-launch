@@ -21,6 +21,7 @@ from launch_jenkins import launch_jenkins
 from launch_jenkins import get_url
 from launch_jenkins import get_job_params
 from launch_jenkins import launch_build
+from launch_jenkins import get_job_status
 from launch_jenkins import wait_queue_item
 from launch_jenkins import wait_for_job
 from launch_jenkins import retrieve_log
@@ -471,21 +472,46 @@ def test_wait_queue_item_cancelled(mock_url):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    with pytest.raises(SystemExit):
+    with pytest.raises(RuntimeError):
         wait_queue_item(g_url, g_auth, 0.2)
     assert time.time() - t0 >= 0.5
+
+
+@pytest.mark.parametrize(
+    'status, expect',
+    [
+        ('SUCCESS', True),
+        ('FAILED', False),
+        ('CANCELLED', False),
+        ('IN_PROGRESS', None),
+        ('NOT_EXECUTED', None),
+    ],
+)
+def test_get_job_status(mock_url, status, expect):
+    stage = {'name': 'stage', 'status': status}
+    resp = {'name': 'name', 'status': status, 'stages': [stage]}
+    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
+    assert get_job_status(g_url, g_auth) == (expect, stage)
 
 
 def test_wait_for_job(mock_url):
     def set_finished():
         time.sleep(0.5)
-        resp = {'status': 'SUCCESS', 'name': 'name'}
+        resp = {
+            'status': 'SUCCESS',
+            'name': 'name',
+            'stages': [{'status': 'SUCCESS', 'name': 'stage'}],
+        }
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
     def set_in_progress():
         time.sleep(0.5)
-        resp = {'status': 'IN_PROGRESS', 'name': 'name'}
+        resp = {
+            'status': 'IN_PROGRESS',
+            'name': 'name',
+            'stages': [{'status': 'IN_PROGRESS', 'name': 'stage'}],
+        }
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
@@ -493,7 +519,11 @@ def test_wait_for_job(mock_url):
         set_in_progress()
         set_finished()
 
-    resp = {'name': 'name', 'status': 'NOT_EXECUTED'}
+    resp = {
+        'name': 'name',
+        'status': 'NOT_EXECUTED',
+        'stages': [{'name': 'stage', 'status': 'NOT_EXECUTED'}],
+    }
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
     Thread(target=update_status).start()
 
@@ -510,11 +540,18 @@ def test_wait_for_job_fail(mock_url):
 
     def set_finished():
         time.sleep(0.5)
-        resp = {'status': 'FAILED', 'name': 'name'}
+        resp = {
+            'status': 'FAILED',
+            'name': 'name',
+            'stages': [{'name': 'stage', 'status': 'FAILED'}],
+        }
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
-    resp = {'name': 'name'}
+    resp = {
+        'name': 'name',
+        'stages': [{'name': 'stage', 'status': 'IN_PROGRESS'}],
+    }
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
@@ -548,7 +585,11 @@ def test_wait_for_job_get_duration(mock_url, capsys, tty):
 
     def set_finished():
         time.sleep(0.5)
-        resp = {'status': 'success', 'name': 'name'}
+        resp = {
+            'status': 'success',
+            'name': 'name',
+            'stages': [{'name': 'stage', 'status': 'success'}],
+        }
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
