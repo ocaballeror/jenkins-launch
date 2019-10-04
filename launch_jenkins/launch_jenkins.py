@@ -488,6 +488,7 @@ def get_job_status(build_url, auth):
         return result.lower() == 'success', response['stages'][-1]
 
     stages = [s for s in response['stages'] if s['status'] in IN_PROGRESS]
+    stages = stages or [{}]
     return None, stages[0]
 
 
@@ -501,12 +502,12 @@ def wait_for_job(build_url, auth, interval=5.0):
         status, stage = get_job_status(build_url, auth)
         if status is not None:
             return status
-        msg = 'Build %s in progress' % name
-        millis = None
-        msg = stage['name']
+
+        stage_name = stage.get('name', '')
+        msg = stage_name or 'Build %s in progress' % name
         millis = stage.get('durationMillis', None)
-        if stage['name'] != last_stage:
-            last_stage = stage['name']
+        if stage_name != last_stage:
+            last_stage = stage_name
             msg = '\n' + msg
         show_progress(msg, interval, millis=millis)
 
