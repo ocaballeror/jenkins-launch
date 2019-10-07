@@ -480,11 +480,9 @@ def get_job_status(build_url, auth):
             error.msg = 'Build #%s does not exist' % build_number
         raise
     response = json.loads(response.text)
-    name = response.get('name', '')
 
     if response.get('status', 'IN_PROGRESS') not in IN_PROGRESS:
         result = response['status']
-        log('\nJob', name, 'ended in', result)
         return result.lower() == 'success', response['stages'][-1]
 
     stages = [s for s in response['stages'] if s['status'] in IN_PROGRESS]
@@ -501,6 +499,8 @@ def wait_for_job(build_url, auth, interval=5.0):
     while True:
         status, stage = get_job_status(build_url, auth)
         if status is not None:
+            status_name = 'SUCCESS' if status else 'FAILURE'
+            log('\nJob', name, 'ended in', status_name)
             return status
 
         stage_name = stage.get('name', '')
