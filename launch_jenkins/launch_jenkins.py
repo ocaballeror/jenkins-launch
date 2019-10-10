@@ -135,9 +135,8 @@ def parse_kwarg(kwarg):
         msg = 'Invalid job argument: "{}". Please use key=value format'
         raise ValueError(msg.format(kwarg))
 
-    if count == 1 and kwarg.endswith('='):
-        return kwarg[:-1], ''
-    return kwarg.split('=', 1)
+    key, value = kwarg.split('=', 1)
+    return key.strip(), value.strip()
 
 
 def parse_args():
