@@ -113,7 +113,7 @@ def test_argv_params(monkeypatch):
 @pytest.mark.parametrize(
     'params', [(['key']), (['key: value']), (['key=value', 'value: key'])]
 )
-def test_argv_params_wrong_format(monkeypatch, params, capsys):
+def test_argv_params_wrong_format(monkeypatch, params):
     new_argv = ['python'] + g_params + params
     monkeypatch.setattr(sys, 'argv', new_argv)
     with pytest.raises(ValueError) as error:
