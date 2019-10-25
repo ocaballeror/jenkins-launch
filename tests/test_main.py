@@ -110,24 +110,6 @@ def test_wait_only():
     assert call_log[2] == ('save_log_to_file', [build_url, g_auth])
 
 
-@pytest.mark.usefixtures('wait_for_job', 'save_log_to_file', 'wait_only')
-def test_wait_main_invalid_build(monkeypatch):
-    """
-    Run the main function in wait_jenkins.py, but give it the url of a pipeline
-    instead of a build (missing the build number at the end).
-
-    The regex test should fail with a ValueError.
-    """
-    del call_log[:]
-
-    new_argv = [__file__, '-j', job_url, '-u', g_auth[0], '-t', g_auth[1]]
-    monkeypatch.setattr(sys, 'argv', new_argv)
-
-    with pytest.raises(ValueError):
-        launch_jenkins.main()
-    assert not call_log
-
-
 @pytest.mark.usefixtures(
     'parse_args', 'wait_for_job_fail', 'save_log_to_file', 'wait_only'
 )
@@ -135,12 +117,17 @@ def test_wait_main_fail():
     assert launch_jenkins.main() == 1
 
 
-@pytest.mark.usefixtures('wait_for_job', 'save_log_to_file', 'wait_only')
+@pytest.mark.usefixtures('wait_for_job', 'save_log_to_file')
 def test_wait_main_invalid_url(monkeypatch):
+    """
+    Check that main() raises an error when specifying wait-only and passing a
+    url without a build number at the end.
+    """
     del call_log[:]
 
-    basic_argv = [__file__, '-u', g_auth[0], '-t', g_auth[1]]
-    new_argv = basic_argv.copy() + ['-j', 'asdf']
+    basic_argv = [__file__, '-u', g_auth[0], '-t', g_auth[1], '-w']
+    new_argv = list(basic_argv)  # not using list.copy because python2
+    new_argv += ['-j', job_url]
     monkeypatch.setattr(sys, 'argv', new_argv)
 
     with pytest.raises(ValueError):
@@ -158,6 +145,7 @@ def test_wait_main_invalid_url(monkeypatch):
 def test_launch_jenkins_main(monkeypatch):
     del call_log[:]
 
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'mode', 'full')
     assert launch_jenkins.main() == 0
 
     assert call_log[0] == ('parse_args', [])
