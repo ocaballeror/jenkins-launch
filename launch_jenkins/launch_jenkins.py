@@ -483,7 +483,9 @@ def get_job_status(build_url, auth):
         result = response['status']
         return result.lower() == 'success', response['stages'][-1]
 
-    stages = [s for s in response['stages'] if s['status'] in IN_PROGRESS]
+    stages = [
+        s for s in response.get('stages', []) if s['status'] in IN_PROGRESS
+    ]
     stages = stages or [{}]
     return None, stages[0]
 
