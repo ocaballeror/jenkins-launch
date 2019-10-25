@@ -225,7 +225,7 @@ def parse_build_url(url):
     appears to be malformed.
     """
     job_url, _, number = url.rstrip('/').rpartition('/')
-    if not re.search(r'^\d+$', number):
+    if number != 'lastBuild' and not re.search(r'^\d+$', number):
         raise ValueError(
             "This url doesn't look like a valid build. Make sure \
 there is a build number at the end."
