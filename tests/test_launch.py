@@ -525,7 +525,7 @@ def test_wait_queue_item_cancelled(mock_url):
         ('FAILED', False),
         ('CANCELLED', False),
         ('IN_PROGRESS', None),
-        ('NOT_EXECUTED', None),
+        ('NOT_EXECUTED', False),
     ],
 )
 def test_get_job_status(mock_url, status, expect):

@@ -37,7 +37,6 @@ CONFIG = {
     'mode': 'full',
     'debug': False,
 }
-IN_PROGRESS = ('IN_PROGRESS', 'NOT_EXECUTED')
 __version__ = '2.1.5'
 
 
@@ -474,15 +473,29 @@ def get_job_status(build_url, auth):
         raise
     response = json.loads(response.text)
 
-    if response.get('status', 'IN_PROGRESS') not in IN_PROGRESS:
-        result = response['status']
-        return result.lower() == 'success', response['stages'][-1]
-
-    stages = [
-        s for s in response.get('stages', []) if s['status'] in IN_PROGRESS
-    ]
-    stages = stages or [{}]
-    return None, stages[0]
+    status = response.get('status', '')
+    stages = response.get('stages', [{}])
+    if status == 'NOT_EXECUTED':
+        if response.get('durationMillis', 0) == 0:
+            # Build has just been launched. Report it as in_progress
+            return None, {}
+        # Build finished as not_executed. Probably an in your Jenkinsfile
+        return False, stages[-1]
+    elif status == 'IN_PROGRESS':
+        in_progress = [
+            s for s in stages if s.get('status', '') == 'IN_PROGRESS'
+        ]
+        in_progress = in_progress or [{}]
+        return None, in_progress[0]
+    else:
+        # Jenkins returns false negatives in the 'status' field sometimes.
+        # Instead of trusting 'status', we will determine if the build failed
+        # by checking if any of the stages failed.
+        last = stages[-1]
+        status = all(
+            s.get('status', '') in ('SUCCESS', 'NOT_EXECUTED') for s in stages
+        )
+        return status, last
 
 
 def wait_for_job(build_url, auth, interval=5.0):
