@@ -24,8 +24,8 @@ def parse_args(monkeypatch):
 
 @pytest.fixture
 def launch_build(monkeypatch):
-    def mock(*args, **kwargs):
-        call_log.append(('launch_build', list(args)))
+    def mock(url, auth, params):
+        call_log.append(('launch_build', [url, auth, params]))
         return queue_item
 
     monkeypatch.setattr(launch_jenkins, 'launch_build', mock)

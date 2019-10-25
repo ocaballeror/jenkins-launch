@@ -545,10 +545,10 @@ def main():
     Launch a Jenkins build and wait for it to finish.
     """
     launch_params = parse_args()
-    build_url, auth, _ = launch_params
+    build_url, auth, params = launch_params
 
     if CONFIG['mode'] != 'wait':
-        location = launch_build(*launch_params)
+        location = launch_build(build_url, auth, params)
         build_url = wait_queue_item(location, auth)
 
     if CONFIG['mode'] == 'launch':
