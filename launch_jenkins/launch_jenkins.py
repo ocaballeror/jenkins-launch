@@ -420,6 +420,7 @@ def launch_build(url, auth, params=None):
     validate_params(job_params, params)
 
     url += 'buildWithParameters' if job_params else 'build'
+    url += '?delay=0'
     log('Sending build request')
     data = params or ""  # urllib will send a POST with an empty string
     response = get_url(url, data=data, auth=auth)
