@@ -27,7 +27,6 @@ from launch_jenkins import wait_for_job
 from launch_jenkins import retrieve_log
 from launch_jenkins import save_log_to_file
 from launch_jenkins import parse_args
-from launch_jenkins import parse_build_url
 from launch_jenkins import parse_job_url
 from launch_jenkins import get_stderr_size_unix
 from launch_jenkins import is_progressbar_capable
@@ -274,16 +273,45 @@ def test_validate_params_ok(definitions, supplied):
 
 
 @pytest.mark.parametrize(
-    'url', [g_url, g_url + '/build', g_url + '/notanumber', g_url + '/1isnot0']
+    'url', ['http', 'http://example.com/', 'http://example.com/job/']
 )
 def test_parse_build_url_error(url):
+    """
+    Check for a ValueError when trying to parse a build url but a malformed one
+    is given.
+    """
     with pytest.raises(ValueError) as error:
-        parse_build_url(url)
+        parse_job_url(g_url + url, True)
+        assert 'invalid url' in str(error.value).lower()
+
+
+@pytest.mark.parametrize(
+    'url',
+    [
+        g_url,
+        g_url + '/build',
+        g_url + '/notanumber',
+        g_url + '/1isnot0',
+        g_url + 'lastbuild',
+    ],
+)
+def test_parse_build_url_missing_number(url):
+    """
+    Check for a ValueError when trying to parse a build url, but the build
+    number is missing.
+    """
+    with pytest.raises(ValueError) as error:
+        parse_job_url(g_url + url, True)
         assert 'make sure there is a build number' in str(error.value).lower()
 
 
-def test_parse_build_url():
-    assert parse_build_url(g_url + '/53') == g_url
+@pytest.mark.parametrize('url', ['/53', '/lastBuild'])
+def test_parse_build_url(url):
+    """
+    Test parsing build urls with a build number at the end.
+    """
+    url = g_url + url
+    assert parse_job_url(url, True) == url
 
 
 @pytest.mark.parametrize(
@@ -302,27 +330,33 @@ def test_parse_job_url(url):
 
 
 @pytest.mark.parametrize(
-    'job_url, has_number',
+    'job_url',
     [
-        ('http', False),
-        (g_url + '/asdf', False),
-        (g_url + '/BUILD', False),
-        (g_url + '/buildWithParameters?a=b', False),
-        (g_url, True),
-        (g_url + '/42', False),
+        'http',
+        'http/job/something',
+        'http://example.com/',
+        'http://example.com/job/',
+        'http://example.com/job/a/b/',
+        g_url + '/BUILD',
+        g_url + '/buildWithParameters?a=b',
+        g_url + '/42',
+        g_url + '/lastBuild',
     ],
     ids=[
         'not a url',
-        'last section is not a job',
+        'not a url, but ends in /job',
+        'no /job',
+        'cannot end in /job',
+        'penultimate section should be /job/',
         '/build should be lowercase',
         'no parameters allowed in url',
-        'expected job number',
         'unexpected job number',
+        'unexpected lastBuild',
     ],
 )
-def test_parse_job_url_error(job_url, has_number):
+def test_parse_job_url_error(job_url):
     with pytest.raises(ValueError) as error:
-        parse_job_url(job_url, has_number)
+        parse_job_url(job_url)
     assert 'invalid job url' in str(error.value).lower()
 
 

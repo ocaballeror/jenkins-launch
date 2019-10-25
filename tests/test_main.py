@@ -139,20 +139,10 @@ def test_wait_main_fail():
 def test_wait_main_invalid_url(monkeypatch):
     del call_log[:]
 
-    def parse_args_job_url(*args, **kwargs):
-        "Return a job url (without a build number at the end)."
-        return job_url, g_auth, params
+    basic_argv = [__file__, '-u', g_auth[0], '-t', g_auth[1]]
+    new_argv = basic_argv.copy() + ['-j', 'asdf']
+    monkeypatch.setattr(sys, 'argv', new_argv)
 
-    def parse_args_invalid(*args, **kwargs):
-        "Return something that's not even a url."
-        return 'asdfasdf', g_auth, params
-
-    monkeypatch.setattr(launch_jenkins, 'parse_args', parse_args_invalid)
-    with pytest.raises(ValueError):
-        launch_jenkins.main()
-    assert not call_log
-
-    monkeypatch.setattr(launch_jenkins, 'parse_args', parse_args_job_url)
     with pytest.raises(ValueError):
         launch_jenkins.main()
     assert not call_log
