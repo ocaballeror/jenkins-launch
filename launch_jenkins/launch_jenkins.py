@@ -240,8 +240,7 @@ def parse_job_url(job, has_number=False):
     job = job.rstrip('/')
 
     if has_number:
-        if not re.search(r'/job/[^/]*/[0-9]+$', job):
-            raise ValueError('Invalid job URL. Expected a build number')
+        parse_build_url(job)
         return job
     else:
         if re.search(r'/job/[^/]*$', job):
@@ -551,10 +550,7 @@ def main():
     launch_params = parse_args()
     build_url, auth, _ = launch_params
 
-    if CONFIG['mode'] == 'wait':
-        job_url = parse_build_url(build_url)
-        parse_job_url(job_url)
-    else:
+    if CONFIG['mode'] != 'wait':
         location = launch_build(*launch_params)
         build_url = wait_queue_item(location, auth)
 
