@@ -219,20 +219,6 @@ def parse_args():
     return (job, (args.user, args.token), params)
 
 
-def parse_build_url(url):
-    """
-    Get the job url from a build url. Raise a ValueError if the build url
-    appears to be malformed.
-    """
-    job_url, _, number = url.rstrip('/').rpartition('/')
-    if number != 'lastBuild' and not re.search(r'^\d+$', number):
-        raise ValueError(
-            "This url doesn't look like a valid build. Make sure \
-there is a build number at the end."
-        )
-    return job_url
-
-
 def parse_job_url(job, has_number=False):
     """
     Parse the user input job url and return it along with a list of parameters.
@@ -240,15 +226,23 @@ def parse_job_url(job, has_number=False):
     job = job.rstrip('/')
 
     if has_number:
-        parse_build_url(job)
-        return job
+        job_url, _, number = job.rstrip('/').rpartition('/')
+        if number != 'lastBuild' and not re.search(r'^\d+$', number):
+            raise ValueError(
+                "This url doesn't look like a valid build. Make sure "
+                "there is a build number at the end."
+            )
     else:
-        if re.search(r'/job/[^/]*$', job):
-            return job
-        url = re.search('^(.*)/build(WithParameters)?$', job)
-        if url:
-            return url.group(1)
-    raise ValueError('Invalid job URL')
+        action = re.search('^(.*)/build(WithParameters)?$', job)
+        if action:
+            job = action.group(1)
+        if not re.search(r'/job/[^/]+$', job):
+            raise ValueError('Invalid job URL')
+
+    if not re.search('https?://[^/]+(/job/[^/])+', job):
+        raise ValueError('Invalid job URL')
+
+    return job
 
 
 def get_stderr_size_unix():
