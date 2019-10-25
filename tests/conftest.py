@@ -70,17 +70,17 @@ def mock_url(monkeypatch):
         if not isinstance(mock_pairs, list):
             mock_pairs = [mock_pairs]
         mock_pairs = {
-            (p.pop('url'), p.pop('method', 'GET').upper()): p
+            (p.pop('url').split('?')[0], p.pop('method', 'GET').upper()): p
             for p in mock_pairs
         }
 
         def mock(request):
-            url = request.get_full_url()
+            url = request.get_full_url().split('?')[0]
             method = request.get_method()
             resp = mock_pairs.get((url, method), None)
             if resp is None:
                 raise RuntimeError(
-                    "No mock response set for url '{}'".format(url, method)
+                    "No mock response set for {} '{}'".format(method, url)
                 )
 
             resp['text'] = resp.get('text', '')
