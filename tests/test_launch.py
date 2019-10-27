@@ -552,13 +552,22 @@ def test_get_job_status_in_progress(mock_url):
     assert get_job_status(g_url, g_auth) == (None, current)
 
 
-def test_wait_for_job(mock_url):
+@pytest.mark.parametrize(
+    'status, success',
+    [('SUCCESS', True), ('FAILED', False), ('CANCELLED', False)],
+)
+def test_wait_for_job(mock_url, status, success):
+    """
+    Check that wait_for_job returns True or False when a build reaches a final
+    status.
+    """
+
     def set_finished():
         time.sleep(0.5)
         resp = {
-            'status': 'SUCCESS',
+            'status': status,
             'name': 'name',
-            'stages': [{'status': 'SUCCESS', 'name': 'stage'}],
+            'stages': [{'status': status, 'name': 'stage'}],
         }
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
@@ -572,34 +581,8 @@ def test_wait_for_job(mock_url):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    assert wait_for_job(g_url, g_auth, 0.2)
+    assert wait_for_job(g_url, g_auth, 0.2) == success
     assert time.time() - t0 >= 0.5
-
-
-def test_wait_for_job_fail(mock_url):
-    """
-    Check that wait_for_job returns False on any build result other than
-    "success".
-    """
-
-    def set_finished():
-        time.sleep(0.5)
-        resp = {
-            'status': 'FAILED',
-            'name': 'name',
-            'stages': [{'name': 'stage', 'status': 'FAILED'}],
-        }
-        resp = json.dumps(resp)
-        mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
-
-    resp = {
-        'name': 'name',
-        'stages': [{'name': 'stage', 'status': 'IN_PROGRESS'}],
-    }
-    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
-    Thread(target=set_finished).start()
-
-    assert not wait_for_job(g_url, g_auth)
 
 
 def test_wait_for_job_nonexistent(monkeypatch):
