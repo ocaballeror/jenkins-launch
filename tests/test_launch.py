@@ -546,31 +546,17 @@ def test_wait_for_job(mock_url):
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
 
-    def set_in_progress():
-        time.sleep(0.5)
-        resp = {
-            'status': 'IN_PROGRESS',
-            'name': 'name',
-            'stages': [{'status': 'IN_PROGRESS', 'name': 'stage'}],
-        }
-        resp = json.dumps(resp)
-        mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
-
-    def update_status():
-        set_in_progress()
-        set_finished()
-
     resp = {
         'name': 'name',
-        'status': 'NOT_EXECUTED',
-        'stages': [{'name': 'stage', 'status': 'NOT_EXECUTED'}],
+        'status': 'IN_PROGRESS',
+        'stages': [{'name': 'stage', 'status': 'IN_PROGRESS'}],
     }
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
-    Thread(target=update_status).start()
+    Thread(target=set_finished).start()
 
     t0 = time.time()
     assert wait_for_job(g_url, g_auth, 0.2)
-    assert time.time() - t0 >= 1
+    assert time.time() - t0 >= 0.5
 
 
 def test_wait_for_job_fail(mock_url):
@@ -596,7 +582,7 @@ def test_wait_for_job_fail(mock_url):
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
     Thread(target=set_finished).start()
 
-    assert not wait_for_job(g_url, g_auth, 0.2)
+    assert not wait_for_job(g_url, g_auth)
 
 
 def test_wait_for_job_nonexistent(monkeypatch):
@@ -627,9 +613,9 @@ def test_wait_for_job_get_duration(mock_url, capsys, tty):
     def set_finished():
         time.sleep(0.5)
         resp = {
-            'status': 'success',
+            'status': 'SUCCESS',
             'name': 'name',
-            'stages': [{'name': 'stage', 'status': 'success'}],
+            'stages': [{'name': 'stage', 'status': 'SUCCESS'}],
         }
         resp = json.dumps(resp)
         mock_url(dict(url=g_url + '/wfapi/describe', text=resp))
@@ -637,15 +623,16 @@ def test_wait_for_job_get_duration(mock_url, capsys, tty):
     durationMillis = 1200
     resp = {
         'name': 'name',
+        'status': 'IN_PROGRESS',
         'stages': [
-            {'name': 'stage1', 'status': 'success'},
-            {'name': 'stage2', 'status': 'success'},
+            {'name': 'stage1', 'status': 'SUCCESS'},
+            {'name': 'stage2', 'status': 'SUCCESS'},
             {
                 'name': 'stage3',
                 'status': 'IN_PROGRESS',
                 'durationMillis': durationMillis,
             },
-            {'name': 'stage1', 'status': 'pending'},
+            {'name': 'stage4', 'status': 'NOT_EXECUTED'},
         ],
     }
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
