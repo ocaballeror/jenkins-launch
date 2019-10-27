@@ -525,7 +525,6 @@ def test_wait_queue_item_cancelled(mock_url):
         ('FAILED', False),
         ('CANCELLED', False),
         ('IN_PROGRESS', None),
-        ('NOT_EXECUTED', False),
     ],
 )
 def test_get_job_status(mock_url, status, expect):
@@ -550,6 +549,23 @@ def test_get_job_status_in_progress(mock_url):
     resp = {'name': 'name', 'status': 'IN_PROGRESS', 'stages': stages}
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
     assert get_job_status(g_url, g_auth) == (None, current)
+
+
+def test_get_job_status_false_negative(mock_url):
+    """
+    Test that we read the correct response from the list of stages when Jenkins
+    reports a false negative in the status header.
+    """
+    last = {'name': 'stage4', 'status': 'SUCCESS'}
+    stages = [
+        {'name': 'stage0', 'status': 'SUCCESS'},
+        {'name': 'stage1', 'status': 'SUCCESS'},
+        {'name': 'stage2', 'status': 'NOT_EXECUTED'},
+        last,
+    ]
+    resp = {'name': 'name', 'status': 'FAILED', 'stages': stages}
+    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
+    assert get_job_status(g_url, g_auth) == (True, last)
 
 
 @pytest.mark.parametrize(
