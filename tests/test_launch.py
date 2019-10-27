@@ -535,6 +535,23 @@ def test_get_job_status(mock_url, status, expect):
     assert get_job_status(g_url, g_auth) == (expect, stage)
 
 
+def test_get_job_status_in_progress(mock_url):
+    """
+    Check that get_job_status returns the current running stage when the build
+    is in progress.
+    """
+    current = {'name': 'stage2', 'status': 'IN_PROGRESS'}
+    stages = [
+        {'name': 'stage0', 'status': 'SUCCESS'},
+        {'name': 'stage1', 'status': 'NOT_EXECUTED'},
+        current,
+        {'name': 'stage3', 'status': 'NOT_EXECUTED'},
+    ]
+    resp = {'name': 'name', 'status': 'IN_PROGRESS', 'stages': stages}
+    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
+    assert get_job_status(g_url, g_auth) == (None, current)
+
+
 def test_wait_for_job(mock_url):
     def set_finished():
         time.sleep(0.5)
