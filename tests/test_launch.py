@@ -534,6 +534,26 @@ def test_get_job_status(mock_url, status, expect):
     assert get_job_status(g_url, g_auth) == (expect, stage)
 
 
+@pytest.mark.parametrize('duration, status, stage', [
+    (None, None, {}),
+    (0, None, {}),
+    (10, False, {}),
+])
+def test_get_job_status_not_executed(duration, status, stage, mock_url):
+    """
+    Test get_job_status when the status is NOT_EXECUTED.
+
+    It should report that the job is building if durationMillis is 0 or absent,
+    and failure if it's something else.
+    """
+    resp = {'status': 'NOT_EXECUTED'}
+    if duration is not None:
+        resp['durationMillis'] = duration
+
+    mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
+    assert get_job_status(g_url, g_auth) == (status, stage)
+
+
 def test_get_job_status_in_progress(mock_url):
     """
     Check that get_job_status returns the current running stage when the build
