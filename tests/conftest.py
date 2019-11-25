@@ -74,7 +74,7 @@ def mock_url(monkeypatch):
             for p in mock_pairs
         }
 
-        def mock(request):
+        def mock(request, *args, **kwargs):
             url = request.get_full_url().split('?')[0]
             method = request.get_method()
             resp = mock_pairs.get((url, method), None)

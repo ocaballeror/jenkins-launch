@@ -366,7 +366,7 @@ def test_get_url(monkeypatch):
     resp_headers = dict(location='here')
     url = 'http://example.com'
 
-    def fake_response(r):
+    def fake_response(r, *args, **kwargs):
         requests.append(r)
         return FakeResponse(text, headers=resp_headers)
 
@@ -400,7 +400,7 @@ def test_get_url_data(monkeypatch):
     url = 'http://example.com'
     data = {'simple': 'hello', 'space': 'hello world', 'weird': 'jk34$"/ &aks'}
 
-    def fake_response(r):
+    def fake_response(r, *args, **kwargs):
         requests.append(r)
         return FakeResponse()
 
@@ -424,7 +424,7 @@ def test_get_url_stream(monkeypatch):
     text = 'a' * 8192 + 'b' * 100
     url = 'http://example.com'
 
-    def fake_response(r):
+    def fake_response(r, *args, **kwargs):
         requests.append(r)
         return FakeResponse(text)
 
