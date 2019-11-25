@@ -354,14 +354,15 @@ def init_ssl():
     return context
 
 
-def get_url(url, auth, data=None, stream=False):
+def get_url(url, auth=None, data=None, stream=False):
     headers = {'User-Agent': 'foobar'}
-    auth = ':'.join(auth)
-    if sys.version_info >= (3,):
-        basic = base64.b64encode(auth.encode('ascii')).decode('ascii')
-    else:
-        basic = base64.b64encode(auth)
-    headers['Authorization'] = 'Basic {}'.format(basic)
+    if auth:
+        auth = ':'.join(auth)
+        if sys.version_info >= (3,):
+            basic = base64.b64encode(auth.encode('ascii')).decode('ascii')
+        else:
+            basic = base64.b64encode(auth)
+        headers['Authorization'] = 'Basic {}'.format(basic)
 
     if data is not None:
         data = urlencode(data).encode('utf-8')
