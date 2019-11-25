@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import time
+import ssl
 from io import StringIO
 from threading import Thread
 
@@ -435,6 +436,25 @@ def test_get_url_stream(monkeypatch):
     assert next(resp).text.decode('utf-8') == 'b' * 100
     with pytest.raises(StopIteration):
         next(resp)
+
+
+def test_get_url_ssl(monkeypatch, tmp_path, mock_url):
+    url = 'https://example.com/'
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'verify_ssl', True)
+
+    # sabotage system certs so that verification fails
+    file = tmp_path / 'cert'
+    file.touch()
+    monkeypatch.setitem(os.environ, 'SSL_CERT_FILE', str(file))
+    monkeypatch.setitem(os.environ, 'SSL_CERT_DIR', str(tmp_path))
+
+    with pytest.raises(ssl.SSLError):
+        # This should fail
+        get_url(url, auth=g_auth)
+
+    # disable ssl verifying and check that it doesn't fail this time
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'verify_ssl', False)
+    assert get_url(url, auth=g_auth)
 
 
 def test_build_no_params(mock_url, unparametrized):
