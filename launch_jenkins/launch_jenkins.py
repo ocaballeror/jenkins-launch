@@ -14,6 +14,7 @@ import os
 import re
 import base64
 import io
+import ssl
 from itertools import cycle
 from collections import namedtuple
 from collections import OrderedDict
@@ -36,6 +37,7 @@ CONFIG = {
     'progress': False,
     'mode': 'full',
     'debug': False,
+    'verify_ssl': True,
 }
 __version__ = '2.2.0'
 
@@ -340,8 +342,13 @@ def get_url(url, auth, data=None, stream=False):
     if data is not None:
         data = urlencode(data).encode('utf-8')
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    ctx = None
+    if not CONFIG['verify_ssl']:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
     req = Request(url, data, headers=headers)
-    response = urlopen(req)
+    response = urlopen(req, context=ctx)
     if sys.version_info >= (3,):
         response.headers = CaseInsensitiveDict(response.headers._headers)
     else:
