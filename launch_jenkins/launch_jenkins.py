@@ -330,6 +330,30 @@ def stream_response(response):
         yield response
 
 
+def init_ssl():
+    """
+    Create an SSL context and load certificates from the system's directory.
+    """
+    context = ssl.create_default_context()
+    if CONFIG['verify_ssl']:
+        ca_dir = os.environ.get('SSL_CERT_DIR', '/etc/ssl/certs')
+        ca_file = os.environ.get('SSL_CERT_FILE', None)
+        if not ca_file:
+            bundles = [
+                '/etc/ssl/certs/ca-bundle.crt',
+                '/etc/ssl/certs/ca-certificates.crt',
+            ]
+            for bundle in bundles:
+                if os.path.exists(bundle):
+                    ca_file = bundle
+        context.load_verify_locations(ca_file, ca_dir, None)
+    else:
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+
+    return context
+
+
 def get_url(url, auth, data=None, stream=False):
     headers = {'User-Agent': 'foobar'}
     auth = ':'.join(auth)
@@ -342,11 +366,7 @@ def get_url(url, auth, data=None, stream=False):
     if data is not None:
         data = urlencode(data).encode('utf-8')
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
-    ctx = None
-    if not CONFIG['verify_ssl']:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
+    ctx = init_ssl()
     req = Request(url, data, headers=headers)
     response = urlopen(req, context=ctx)
     if sys.version_info >= (3,):
