@@ -415,7 +415,7 @@ def validate_params(definitions, supplied):
     nonexistent = [p for p in supplied if p not in definitions]
     if nonexistent:
         nonexistent = ', '.join(nonexistent)
-        raise ValueError('These parameters do not exist:', nonexistent)
+        raise ValueError('These parameters do not exist: ' + nonexistent)
 
     for key, value in supplied.items():
         choices = definitions[key]
