@@ -354,7 +354,7 @@ def init_ssl():
     return context
 
 
-def get_url(url, auth=None, data=None, stream=False):
+def get_url(url, auth=None, data=None, stream=False, retries=1):
     headers = {'User-Agent': 'foobar'}
     if auth:
         auth = ':'.join(auth)
@@ -367,9 +367,18 @@ def get_url(url, auth=None, data=None, stream=False):
     if data is not None:
         data = urlencode(data).encode('utf-8')
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        retries = 1  # do not retry POSTs
     ctx = init_ssl()
     req = Request(url, data, headers=headers)
-    response = urlopen(req, context=ctx)
+    for i in range(retries):
+        try:
+            response = urlopen(req, context=ctx)
+        except HTTPError:
+            if i == retries - 1:
+                raise
+            time.sleep(.1)
+        else:
+            break
     if sys.version_info >= (3,):
         response.headers = CaseInsensitiveDict(response.headers._headers)
     else:
