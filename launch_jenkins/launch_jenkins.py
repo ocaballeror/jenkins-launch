@@ -39,7 +39,7 @@ CONFIG = {
     'debug': False,
     'verify_ssl': True,
 }
-__version__ = '2.2.1'
+__version__ = '2.2.2'
 
 
 class CaseInsensitiveDict(MutableMapping):
