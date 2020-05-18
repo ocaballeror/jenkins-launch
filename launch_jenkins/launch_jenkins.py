@@ -354,7 +354,7 @@ def init_ssl():
     return context
 
 
-def get_url(url, auth=None, data=None, stream=False, retries=1):
+def get_url(url, auth=None, data=None, stream=False, retries=5):
     headers = {'User-Agent': 'foobar'}
     if auth:
         auth = ':'.join(auth)
