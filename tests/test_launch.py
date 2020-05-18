@@ -457,6 +457,31 @@ def test_get_url_ssl(monkeypatch, tmp_path, mock_url):
     assert get_url(url, auth=g_auth)
 
 
+def test_get_url_retry(monkeypatch):
+    url = 'https://example.com/'
+
+    def raise_httperror(*args, **kwargs):
+        raise HTTPError(url, 500, 'Internal Server Error', {}, None)
+
+    def undo_and_raise(*args, **kwargs):
+        monkeypatch.undo()
+        raise HTTPError(url, 500, 'Internal Server Error', {}, None)
+
+    # raise an error every time
+    monkeypatch.setattr(launch_jenkins, 'urlopen', raise_httperror)
+    with pytest.raises(HTTPError):
+        get_url(url, retries=5)
+
+    # raise an error the first time and succeed the second
+    monkeypatch.setattr(launch_jenkins, 'urlopen', undo_and_raise)
+    assert get_url(url, retries=2)
+
+    # no retries for posts
+    monkeypatch.setattr(launch_jenkins, 'urlopen', undo_and_raise)
+    with pytest.raises(HTTPError):
+        get_url(url, data={'hello': 'world'}, retries=2)
+
+
 def test_build_no_params(mock_url, unparametrized):
     headers = {'Location': 'some queue'}
     mock_url(dict(url=g_url + '/build', headers=headers, method='POST'))
