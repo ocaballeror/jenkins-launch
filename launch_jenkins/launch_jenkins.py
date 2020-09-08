@@ -20,15 +20,20 @@ from collections import namedtuple
 from collections import OrderedDict
 
 if sys.version_info >= (3,):
-    from urllib.request import Request, urlopen  # noqa:F401
+    from urllib.request import Request, HTTPCookieProcessor  # noqa:F401
+    from urllib.request import urlopen, urlsplit, install_opener
+    from urllib.request import build_opener  # noqa:F401
     from urllib.error import HTTPError  # noqa:F401
     from urllib.parse import urlencode  # noqa:F401
     from collections.abc import Mapping, MutableMapping  # noqa:F401
+    from http.cookiejar import CookieJar  # noqa:F401
 else:
-    from urllib2 import Request, urlopen  # noqa:F401
-    from urllib2 import HTTPError  # noqa:F401
+    from urllib2 import Request, HTTPError, HTTPCookieProcessor  # noqa:F401
+    from urllib2 import urlopen, build_opener, install_opener  # noqa:F401
     from urllib import urlencode  # noqa:F401
+    from urlparse import urlsplit  # noqa:F401
     from collections import Mapping, MutableMapping  # noqa:F401
+    from cookielib import CookieJar  # noqa:F401
 
 
 CONFIG = {
@@ -380,34 +385,50 @@ def validate_params(definitions, supplied):
 
 
 class Session:
-    def __init__(self, auth):
+    def __init__(self, base, auth):
         self.auth = auth
+        self.headers = {'User-Agent': 'foobar'}
+        self.context = init_ssl()
+        self.jar = CookieJar()
+        split = urlsplit(base)
+        self.base = '{}://{}'.format(split.scheme, split.netloc)
 
-    def get_url(self, url, data=None, stream=False, retries=5):
-        headers = {'User-Agent': 'foobar'}
         if self.auth:
             auth = ':'.join(self.auth)
             if sys.version_info >= (3,):
                 basic = base64.b64encode(auth.encode('ascii')).decode('ascii')
             else:
                 basic = base64.b64encode(auth)
-            headers['Authorization'] = 'Basic {}'.format(basic)
+            self.headers['Authorization'] = 'Basic {}'.format(basic)
 
+        try:
+            args = 'xpath=concat(//crumbRequestField,":",//crumb)'
+            resp = self.get_url(self.base + '/crumbIssuer/api/xml?' + args)
+        except HTTPError as err:
+            if err.code != 404:
+                raise
+        else:
+            key, value = resp.text.split(':')
+            self.headers[key] = value
+
+    def get_url(self, url, data=None, stream=False, retries=5):
+        headers = self.headers.copy()
         if data is not None:
             data = urlencode(data).encode('utf-8')
             headers['Content-Type'] = 'application/x-www-form-urlencoded'
             retries = 1  # do not retry POSTs
-        ctx = init_ssl()
         req = Request(url, data, headers=headers)
+        self.jar.add_cookie_header(req)
         for i in range(retries):
             try:
-                response = urlopen(req, context=ctx)
+                response = urlopen(req, context=self.context)
             except HTTPError:
                 if i == retries - 1:
                     raise
                 time.sleep(0.1)
             else:
                 break
+        self.jar.extract_cookies(response, req)
         if sys.version_info >= (3,):
             response.headers = CaseInsensitiveDict(response.headers._headers)
         else:
@@ -590,19 +611,19 @@ class Session:
 
 
 def launch_build(url, auth, *args, **kwargs):
-    return Session(auth).launch_build(url, *args, **kwargs)
+    return Session(url, auth).launch_build(url, *args, **kwargs)
 
 
 def wait_queue_item(url, auth, *args, **kwargs):
-    return Session(auth).wait_queue_item(url, *args, **kwargs)
+    return Session(url, auth).wait_queue_item(url, *args, **kwargs)
 
 
 def wait_for_job(url, auth, *args, **kwargs):
-    return Session(auth).wait_for_job(url, *args, **kwargs)
+    return Session(url, auth).wait_for_job(url, *args, **kwargs)
 
 
 def save_log_to_file(url, auth, *args, **kwargs):
-    return Session(auth).save_log_to_file(url, *args, **kwargs)
+    return Session(url, auth).save_log_to_file(url, *args, **kwargs)
 
 
 def main():
@@ -611,7 +632,7 @@ def main():
     """
     launch_params = parse_args()
     build_url, auth, params = launch_params
-    session = Session(auth)
+    session = Session(build_url, auth)
 
     if CONFIG['mode'] != 'wait':
         location = session.launch_build(build_url, params)
