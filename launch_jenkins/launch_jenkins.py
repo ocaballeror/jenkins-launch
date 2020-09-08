@@ -354,68 +354,6 @@ def init_ssl():
     return context
 
 
-def get_url(url, auth=None, data=None, stream=False, retries=5):
-    headers = {'User-Agent': 'foobar'}
-    if auth:
-        auth = ':'.join(auth)
-        if sys.version_info >= (3,):
-            basic = base64.b64encode(auth.encode('ascii')).decode('ascii')
-        else:
-            basic = base64.b64encode(auth)
-        headers['Authorization'] = 'Basic {}'.format(basic)
-
-    if data is not None:
-        data = urlencode(data).encode('utf-8')
-        headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        retries = 1  # do not retry POSTs
-    ctx = init_ssl()
-    req = Request(url, data, headers=headers)
-    for i in range(retries):
-        try:
-            response = urlopen(req, context=ctx)
-        except HTTPError:
-            if i == retries - 1:
-                raise
-            time.sleep(.1)
-        else:
-            break
-    if sys.version_info >= (3,):
-        response.headers = CaseInsensitiveDict(response.headers._headers)
-    else:
-        response.headers = CaseInsensitiveDict(response.headers.dict)
-    if stream:
-        return stream_response(response)
-    else:
-        response.text = response.read().decode('utf-8')
-        return response
-
-
-def get_job_params(url, auth):
-    """
-    Get the list of allowed parameters and their respective choices.
-    """
-    url = url.rstrip('/') + '/api/json'
-    response = get_url(url, auth=auth)
-    response = json.loads(response.text)
-    props = response.get('property', [])
-    definition_prop = 'hudson.model.ParametersDefinitionProperty'
-    defs = next(
-        (
-            p['parameterDefinitions']
-            for p in props
-            if p.get('_class', '') == definition_prop
-        ),
-        [],
-    )
-    if not defs:
-        return {}
-
-    params = {}
-    for definition in defs:
-        params[definition['name']] = definition.get('choices', None)
-    return params
-
-
 def validate_params(definitions, supplied):
     """
     Check the dict of supplied params against the list of allowed choices.
@@ -441,153 +379,230 @@ def validate_params(definitions, supplied):
             raise ValueError(msg.format(value, key, choices))
 
 
-def launch_build(url, auth, params=None):
-    """
-    Submit job and return the queue item location.
-    """
-    url = url.rstrip('/') + '/'
-    job_params = get_job_params(url, auth)
-    validate_params(job_params, params)
+class Session:
+    def __init__(self, auth):
+        self.auth = auth
 
-    url += 'buildWithParameters' if job_params else 'build'
-    url += '?delay=0'
-    log('Sending build request')
-    data = params or ""  # urllib will send a POST with an empty string
-    response = get_url(url, data=data, auth=auth)
+    def get_url(self, url, data=None, stream=False, retries=5):
+        headers = {'User-Agent': 'foobar'}
+        if self.auth:
+            auth = ':'.join(self.auth)
+            if sys.version_info >= (3,):
+                basic = base64.b64encode(auth.encode('ascii')).decode('ascii')
+            else:
+                basic = base64.b64encode(auth)
+            headers['Authorization'] = 'Basic {}'.format(basic)
 
-    assert (
-        'Location' in response.headers
-    ), 'Something went wrong with the Jenkins API'
-    location = response.headers['Location']
+        if data is not None:
+            data = urlencode(data).encode('utf-8')
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            retries = 1  # do not retry POSTs
+        ctx = init_ssl()
+        req = Request(url, data, headers=headers)
+        for i in range(retries):
+            try:
+                response = urlopen(req, context=ctx)
+            except HTTPError:
+                if i == retries - 1:
+                    raise
+                time.sleep(0.1)
+            else:
+                break
+        if sys.version_info >= (3,):
+            response.headers = CaseInsensitiveDict(response.headers._headers)
+        else:
+            response.headers = CaseInsensitiveDict(response.headers.dict)
+        if stream:
+            return stream_response(response)
+        else:
+            response.text = response.read().decode('utf-8')
+            return response
 
-    assert 'queue' in location, 'Something went wrong with the Jenkins API'
-    return location
-
-
-def get_queue_status(location, auth):
-    """
-    Check the status of a queue item. Returns the build url if the job is
-    already executing, or None if it's still in the queue.
-    """
-    queue = location.rstrip('/') + '/api/json'
-    response = get_url(queue, auth=auth)
-    response = json.loads(response.text)
-    if response.get('cancelled', False):
-        raise RuntimeError('Build was cancelled')
-    if response.get('executable', False):
-        return response['executable']['url']
-    return None
-
-
-def wait_queue_item(location, auth, interval=5.0):
-    """
-    Wait until the item starts building.
-    """
-    while True:
-        job_url = get_queue_status(location, auth)
-        if job_url is not None:
-            break
-        show_progress('Job queued', interval)
-    log('')
-    return job_url
-
-
-def get_job_status(build_url, auth):
-    """
-    Check the status of a running build.
-
-    Returns a tuple with the status of the build and the current stage.
-    The status is True on successful exit, False on failure or None if the
-    build is still running.
-    """
-    poll_url = build_url.rstrip('/') + '/wfapi/describe'
-    try:
-        response = get_url(poll_url, auth=auth)
-    except HTTPError as error:
-        if error.code == 404:
-            build_number = build_url.rstrip('/').rpartition('/')[2]
-            error.msg = 'Build #%s does not exist' % build_number
-        raise
-    response = json.loads(response.text)
-
-    status = response.get('status', '')
-    stages = response.get('stages', [{}])
-    if status == 'NOT_EXECUTED':
-        if response.get('durationMillis', 0) == 0:
-            # Build has just been launched. Report it as in_progress
-            return None, {}
-        # Build finished as not_executed. Probably an in your Jenkinsfile
-        return False, stages[-1]
-    elif status == 'IN_PROGRESS':
-        in_progress = [
-            s for s in stages if s.get('status', '') == 'IN_PROGRESS'
-        ]
-        in_progress = in_progress or [{}]
-        return None, in_progress[0]
-    else:
-        # Jenkins returns false negatives in the 'status' field sometimes.
-        # Instead of trusting 'status', we will determine if the build failed
-        # by checking if any of the stages failed.
-        last = stages[-1]
-        status = all(
-            s.get('status', '') in ('SUCCESS', 'NOT_EXECUTED') for s in stages
+    def get_job_params(self, url):
+        """
+        Get the list of allowed parameters and their respective choices.
+        """
+        url = url.rstrip('/') + '/api/json'
+        response = self.get_url(url)
+        response = json.loads(response.text)
+        props = response.get('property', [])
+        definition_prop = 'hudson.model.ParametersDefinitionProperty'
+        defs = next(
+            (
+                p['parameterDefinitions']
+                for p in props
+                if p.get('_class', '') == definition_prop
+            ),
+            [],
         )
-        return status, last
+        if not defs:
+            return {}
+
+        params = {}
+        for definition in defs:
+            params[definition['name']] = definition.get('choices', None)
+        return params
+
+    def launch_build(self, url, params=None):
+        """
+        Submit job and return the queue item location.
+        """
+        url = url.rstrip('/') + '/'
+        job_params = self.get_job_params(url)
+        validate_params(job_params, params)
+
+        url += 'buildWithParameters' if job_params else 'build'
+        url += '?delay=0'
+        log('Sending build request')
+        data = params or ""  # urllib will send a POST with an empty string
+        response = self.get_url(url, data=data)
+
+        assert (
+            'Location' in response.headers
+        ), 'Something went wrong with the Jenkins API'
+        location = response.headers['Location']
+
+        assert 'queue' in location, 'Something went wrong with the Jenkins API'
+        return location
+
+    def get_queue_status(self, location):
+        """
+        Check the status of a queue item. Returns the build url if the job is
+        already executing, or None if it's still in the queue.
+        """
+        queue = location.rstrip('/') + '/api/json'
+        response = self.get_url(queue)
+        response = json.loads(response.text)
+        if response.get('cancelled', False):
+            raise RuntimeError('Build was cancelled')
+        if response.get('executable', False):
+            return response['executable']['url']
+        return None
+
+    def wait_queue_item(self, location, interval=5.0):
+        """
+        Wait until the item starts building.
+        """
+        while True:
+            job_url = self.get_queue_status(location)
+            if job_url is not None:
+                break
+            show_progress('Job queued', interval)
+        log('')
+        return job_url
+
+    def get_job_status(self, build_url):
+        """
+        Check the status of a running build.
+
+        Returns a tuple with the status of the build and the current stage.
+        The status is True on successful exit, False on failure or None if the
+        build is still running.
+        """
+        poll_url = build_url.rstrip('/') + '/wfapi/describe'
+        try:
+            response = self.get_url(poll_url)
+        except HTTPError as error:
+            if error.code == 404:
+                build_number = build_url.rstrip('/').rpartition('/')[2]
+                error.msg = 'Build #%s does not exist' % build_number
+            raise
+        response = json.loads(response.text)
+
+        status = response.get('status', '')
+        stages = response.get('stages', [{}])
+        if status == 'NOT_EXECUTED':
+            if response.get('durationMillis', 0) == 0:
+                # Build has just been launched. Report it as in_progress
+                return None, {}
+            # Build finished as not_executed. Probably an in your Jenkinsfile
+            return False, stages[-1]
+        elif status == 'IN_PROGRESS':
+            in_progress = [
+                s for s in stages if s.get('status', '') == 'IN_PROGRESS'
+            ]
+            in_progress = in_progress or [{}]
+            return None, in_progress[0]
+        else:
+            # Jenkins returns false negatives in the 'status' field sometimes.
+            # Instead of trusting 'status', we will determine if the build
+            # failed by checking if any of the stages failed.
+            last = stages[-1]
+            status = all(
+                s.get('status', '') in ('SUCCESS', 'NOT_EXECUTED')
+                for s in stages
+            )
+            return status, last
+
+    def wait_for_job(self, build_url, interval=5.0):
+        """
+        Wait until the build finishes.
+        """
+        name = '#' + build_url.rstrip('/').split('/')[-1]
+        last_stage = None
+        while True:
+            status, stage = self.get_job_status(build_url)
+            if status is not None:
+                status_name = 'SUCCESS' if status else 'FAILURE'
+                log('\nJob', name, 'ended in', status_name)
+                return status
+
+            stage_name = stage.get('name', '')
+            msg = stage_name or 'Build %s in progress' % name
+            millis = stage.get('durationMillis', None)
+            if stage_name != last_stage:
+                last_stage = stage_name
+                msg = '\n' + msg
+            show_progress(msg, interval, millis=millis)
+
+    def retrieve_log(self, build_url):
+        """
+        Get the build log and return it as a string.
+        """
+        build_url = build_url.rstrip('/') + '/'
+        url = build_url + 'consoleText'
+        log = ''.join(
+            block.text.decode('utf-8', errors='ignore')
+            for block in self.get_url(url, stream=True)
+        )
+        return log
+
+    def save_log_to_file(self, build_url):
+        """
+        Save the build log to a file.
+        """
+        build_url = build_url.rstrip('/') + '/'
+        if CONFIG['dump']:
+            file = sys.stdout
+        else:
+            job_name = build_url[build_url.find('/job/') :]
+            job_name = (
+                job_name.replace('/', '_').replace('_job_', '_').strip('_')
+            )
+            log_file = job_name + '.txt'
+            file = io.open(log_file, 'w', encoding='utf-8')
+
+        file.write(self.retrieve_log(build_url))
+
+        if not CONFIG['dump']:
+            file.close()
+            log('Job output saved to', log_file)
 
 
-def wait_for_job(build_url, auth, interval=5.0):
-    """
-    Wait until the build finishes.
-    """
-    name = '#' + build_url.rstrip('/').split('/')[-1]
-    last_stage = None
-    while True:
-        status, stage = get_job_status(build_url, auth)
-        if status is not None:
-            status_name = 'SUCCESS' if status else 'FAILURE'
-            log('\nJob', name, 'ended in', status_name)
-            return status
-
-        stage_name = stage.get('name', '')
-        msg = stage_name or 'Build %s in progress' % name
-        millis = stage.get('durationMillis', None)
-        if stage_name != last_stage:
-            last_stage = stage_name
-            msg = '\n' + msg
-        show_progress(msg, interval, millis=millis)
+def launch_build(url, auth, *args, **kwargs):
+    return Session(auth).launch_build(url, *args, **kwargs)
 
 
-def retrieve_log(build_url, auth):
-    """
-    Get the build log and return it as a string.
-    """
-    build_url = build_url.rstrip('/') + '/'
-    url = build_url + 'consoleText'
-    log = ''.join(
-        block.text.decode('utf-8', errors='ignore')
-        for block in get_url(url, auth=auth, stream=True)
-    )
-    return log
+def wait_queue_item(url, auth, *args, **kwargs):
+    return Session(auth).wait_queue_item(url, *args, **kwargs)
 
 
-def save_log_to_file(build_url, auth):
-    """
-    Save the build log to a file.
-    """
-    build_url = build_url.rstrip('/') + '/'
-    if CONFIG['dump']:
-        file = sys.stdout
-    else:
-        job_name = build_url[build_url.find('/job/') :]
-        job_name = job_name.replace('/', '_').replace('_job_', '_').strip('_')
-        log_file = job_name + '.txt'
-        file = io.open(log_file, 'w', encoding='utf-8')
+def wait_for_job(url, auth, *args, **kwargs):
+    return Session(auth).wait_for_job(url, *args, **kwargs)
 
-    file.write(retrieve_log(build_url, auth))
 
-    if not CONFIG['dump']:
-        file.close()
-        log('Job output saved to', log_file)
+def save_log_to_file(url, auth, *args, **kwargs):
+    return Session(auth).save_log_to_file(url, *args, **kwargs)
 
 
 def main():
@@ -596,17 +611,18 @@ def main():
     """
     launch_params = parse_args()
     build_url, auth, params = launch_params
+    session = Session(auth)
 
     if CONFIG['mode'] != 'wait':
-        location = launch_build(build_url, auth, params)
-        build_url = wait_queue_item(location, auth)
+        location = session.launch_build(build_url, params)
+        build_url = session.wait_queue_item(location)
 
     if CONFIG['mode'] == 'launch':
         print(build_url)
         return 0
 
-    result = wait_for_job(build_url, auth)
-    save_log_to_file(build_url, auth)
+    result = session.wait_for_job(build_url)
+    session.save_log_to_file(build_url)
     return int(not result)
 
 
