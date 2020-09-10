@@ -401,6 +401,13 @@ class Session:
                 basic = base64.b64encode(auth)
             self.headers['Authorization'] = 'Basic {}'.format(basic)
 
+        self._get_crumb()
+
+    def _get_crumb(self):
+        """
+        Get the necessary crumb header if our Jenkins instance is CSRF
+        protected, and automatically add it to this session's default headers.
+        """
         try:
             args = 'xpath=concat(//crumbRequestField,":",//crumb)'
             resp = self.get_url(self.base + '/crumbIssuer/api/xml?' + args)
