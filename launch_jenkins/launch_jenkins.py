@@ -459,7 +459,7 @@ class Session:
             retries = 1  # do not retry POSTs
         req = Request(url, data, headers=headers)
         self.jar.add_cookie_header(req)
-        for i in range(retries):
+        for i in range(retries):  # pragma: nocover
             try:
                 response = urlopen(req, context=self.context)
             except HTTPError:
