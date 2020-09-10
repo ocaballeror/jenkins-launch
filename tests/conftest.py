@@ -7,6 +7,18 @@ import pytest
 from launch_jenkins import launch_jenkins
 from launch_jenkins import HTTPError
 from launch_jenkins import CaseInsensitiveDict
+from launch_jenkins import Session
+
+
+g_url = "http://example.com/job/thing/job/other/job/master"
+g_auth = ('user', 'pwd')
+g_auth_b64 = 'Basic dXNlcjpwd2Q='
+g_params = ['-j', g_url, '-u', g_auth[0], '-t', g_auth[1]]
+
+
+class Dummy:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
 class FakeResponse:
@@ -15,6 +27,10 @@ class FakeResponse:
     """
 
     def __init__(self, text='', headers=None, status_code=200):
+        self.info = lambda: Dummy(
+            get_all=lambda a, b=None: b,
+            getheaders=lambda a: None
+        )
         self.text = text
         self._readable = text
         self.headers = CaseInsensitiveDict(headers)
@@ -54,9 +70,14 @@ def config():
         launch_jenkins.CONFIG = backup
 
 
-@pytest.fixture
-def unparametrized(monkeypatch):
-    monkeypatch.setattr(launch_jenkins, 'get_job_params', lambda a, b: {})
+@pytest.fixture(scope='session')
+def session():
+    return Session(g_url, g_auth)
+
+
+@pytest.fixture(scope='function')
+def unparametrized(monkeypatch, session):
+    monkeypatch.setattr(session, 'get_job_params', lambda a: {})
 
 
 @pytest.fixture

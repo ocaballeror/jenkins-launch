@@ -19,33 +19,21 @@ else:
 
 
 from launch_jenkins import launch_jenkins
-from launch_jenkins import get_url
-from launch_jenkins import get_job_params
-from launch_jenkins import launch_build
-from launch_jenkins import get_job_status
-from launch_jenkins import wait_queue_item
-from launch_jenkins import wait_for_job
-from launch_jenkins import retrieve_log
-from launch_jenkins import save_log_to_file
 from launch_jenkins import parse_args
 from launch_jenkins import parse_job_url
 from launch_jenkins import get_stderr_size_unix
 from launch_jenkins import is_progressbar_capable
+from launch_jenkins import init_ssl
 from launch_jenkins import HTTPError
 
 from .conftest import FakeResponse
+from .conftest import g_url, g_auth, g_auth_b64, g_params
 from .test_helper import assert_show_empty_progress
 from .test_helper import assert_show_no_progressbar
 from .test_helper import assert_show_progressbar
 from .test_helper import assert_show_progressbar_millis
 from .test_helper import assert_progressbar_millis
 from .test_helper import raise_error
-
-
-g_url = "http://example.com:8080/job/thing/job/other/job/master"
-g_auth = ('user', 'pwd')
-g_auth_b64 = 'Basic dXNlcjpwd2Q='
-g_params = ['-j', g_url, '-u', g_auth[0], '-t', g_auth[1]]
 
 
 @pytest.mark.parametrize(
@@ -177,12 +165,12 @@ def test_launch_wait_only(arg, url, mode, monkeypatch, config):
         },
     ],
 )
-def test_get_job_params_empty(mock_url, response):
+def test_get_job_params_empty(mock_url, response, session):
     """
     Get job params when there is no parameter definition
     """
     mock_url({'url': g_url + '/api/json', 'text': json.dumps(response)})
-    assert get_job_params(g_url, g_auth) == {}
+    assert session.get_job_params(g_url) == {}
 
 
 @pytest.mark.parametrize(
@@ -218,7 +206,7 @@ def test_get_job_params_empty(mock_url, response):
         )
     ],
 )
-def test_get_job_params(mock_url, response, expect):
+def test_get_job_params(mock_url, session, response, expect):
     response = {
         'property': [
             {
@@ -228,7 +216,7 @@ def test_get_job_params(mock_url, response, expect):
         ]
     }
     mock_url({'url': g_url + '/api/json', 'text': json.dumps(response)})
-    assert get_job_params(g_url, g_auth) == expect
+    assert session.get_job_params(g_url) == expect
 
 
 @pytest.mark.parametrize(
@@ -361,7 +349,7 @@ def test_parse_job_url_error(job_url):
     assert 'invalid job url' in str(error.value).lower()
 
 
-def test_get_url(monkeypatch):
+def test_get_url(monkeypatch, session):
     requests = []
     text = 'hello world'
     resp_headers = dict(location='here')
@@ -372,7 +360,7 @@ def test_get_url(monkeypatch):
         return FakeResponse(text, headers=resp_headers)
 
     monkeypatch.setattr(launch_jenkins, 'urlopen', fake_response)
-    resp = get_url(url, auth=g_auth)
+    resp = session.get_url(url)
     assert resp.text == text
     assert resp.headers['location'] == 'here'
     assert resp.headers['LoCaTiOn'] == 'here'
@@ -388,15 +376,15 @@ def test_get_url(monkeypatch):
     assert req.headers['Authorization'] == g_auth_b64
 
 
-def test_get_url_escaped(mock_url):
+def test_get_url_escaped(mock_url, session):
     text = 'yes'
     url = 'http://example.com/feature%252Fhelloworld'
     mock_url(dict(url=url, text=text))
 
-    assert get_url(url, auth=g_auth).text == text
+    assert session.get_url(url).text == text
 
 
-def test_get_url_data(monkeypatch):
+def test_get_url_data(monkeypatch, session):
     requests = []
     url = 'http://example.com'
     data = {'simple': 'hello', 'space': 'hello world', 'weird': 'jk34$"/ &aks'}
@@ -406,7 +394,7 @@ def test_get_url_data(monkeypatch):
         return FakeResponse()
 
     monkeypatch.setattr(launch_jenkins, 'urlopen', fake_response)
-    get_url(url, auth=g_auth, data=data)
+    session.get_url(url, data=data)
 
     req = requests[0]
     if hasattr(req, '_Request__original'):
@@ -420,7 +408,7 @@ def test_get_url_data(monkeypatch):
     assert parsed == data
 
 
-def test_get_url_stream(monkeypatch):
+def test_get_url_stream(monkeypatch, session):
     requests = []
     text = 'a' * 8192 + 'b' * 100
     url = 'http://example.com'
@@ -430,7 +418,7 @@ def test_get_url_stream(monkeypatch):
         return FakeResponse(text)
 
     monkeypatch.setattr(launch_jenkins, 'urlopen', fake_response)
-    resp = get_url(url, auth=g_auth, stream=True)
+    resp = session.get_url(url, stream=True)
     assert not hasattr(resp, 'text')
     assert next(resp).text.decode('utf-8') == 'a' * 8192
     assert next(resp).text.decode('utf-8') == 'b' * 100
@@ -438,7 +426,7 @@ def test_get_url_stream(monkeypatch):
         next(resp)
 
 
-def test_get_url_ssl(monkeypatch, tmp_path, mock_url):
+def test_get_url_ssl(monkeypatch, tmp_path, mock_url, session):
     url = 'https://example.com/'
     monkeypatch.setitem(launch_jenkins.CONFIG, 'verify_ssl', True)
 
@@ -450,14 +438,15 @@ def test_get_url_ssl(monkeypatch, tmp_path, mock_url):
 
     with pytest.raises(ssl.SSLError):
         # This should fail
-        get_url(url, auth=g_auth)
+        monkeypatch.setattr(session, 'context', init_ssl())
 
     # disable ssl verifying and check that it doesn't fail this time
     monkeypatch.setitem(launch_jenkins.CONFIG, 'verify_ssl', False)
-    assert get_url(url, auth=g_auth)
+    monkeypatch.setattr(session, 'context', init_ssl())
+    assert session.get_url(url)
 
 
-def test_get_url_retry(monkeypatch):
+def test_get_url_retry(monkeypatch, session):
     url = 'https://example.com/'
 
     def raise_httperror(*args, **kwargs):
@@ -470,34 +459,34 @@ def test_get_url_retry(monkeypatch):
     # raise an error every time
     monkeypatch.setattr(launch_jenkins, 'urlopen', raise_httperror)
     with pytest.raises(HTTPError):
-        get_url(url, retries=5)
+        session.get_url(url, retries=5)
 
     # raise an error the first time and succeed the second
     monkeypatch.setattr(launch_jenkins, 'urlopen', undo_and_raise)
-    assert get_url(url, retries=2)
+    assert session.get_url(url, retries=2)
 
     # no retries for posts
     monkeypatch.setattr(launch_jenkins, 'urlopen', undo_and_raise)
     with pytest.raises(HTTPError):
-        get_url(url, data={'hello': 'world'}, retries=2)
+        session.get_url(url, data={'hello': 'world'}, retries=2)
 
 
-def test_build_no_params(mock_url, unparametrized):
+def test_build_no_params(mock_url, unparametrized, session):
     headers = {'Location': 'some queue'}
     mock_url(dict(url=g_url + '/build', headers=headers, method='POST'))
 
     # Launch build
-    assert launch_build(g_url, g_auth, {}) == 'some queue'
+    assert session.launch_build(g_url, {}) == 'some queue'
 
 
-def test_build_with_params(mock_url, monkeypatch):
+def test_build_with_params(mock_url, monkeypatch, session):
     headers = {'Location': 'param queue'}
 
     # Set build properties as parametrized
     def mock_get_job_params(*args):
         return {'param': None}
 
-    monkeypatch.setattr(launch_jenkins, 'get_job_params', mock_get_job_params)
+    monkeypatch.setattr(session, 'get_job_params', mock_get_job_params)
 
     mock_url(
         dict(
@@ -506,33 +495,33 @@ def test_build_with_params(mock_url, monkeypatch):
     )
 
     # Launch parametrized build
-    assert launch_build(g_url, g_auth) == 'param queue'
-    assert launch_build(g_url, g_auth, {'param': 'asdf'}) == 'param queue'
+    assert session.launch_build(g_url) == 'param queue'
+    assert session.launch_build(g_url) == 'param queue'
 
 
-def test_launch_error(mock_url, unparametrized):
+def test_launch_error(mock_url, unparametrized, session):
     mock_url(dict(url=g_url + '/build', status_code=400, method='POST'))
 
     with pytest.raises(HTTPError):
-        launch_build(g_url, g_auth)
+        session.launch_build(g_url)
 
 
-def test_launch_error_no_queue(mock_url, unparametrized):
+def test_launch_error_no_queue(mock_url, unparametrized, session):
     headers = {'Header': 'value'}
     mock_url(dict(url=g_url + '/build', headers=headers, method='POST'))
 
     # Response has no location header
     with pytest.raises(AssertionError):
-        launch_build(g_url, g_auth, {})
+        session.launch_build(g_url, {})
 
     headers = {'Location': 'this is not the word you are looking for'}
     mock_url(dict(url=g_url + '/build', headers=headers, method='POST'))
     # Location has no queue url
     with pytest.raises(AssertionError):
-        launch_build(g_url, g_auth, {})
+        session.launch_build(g_url, {})
 
 
-def test_wait_queue_item(mock_url):
+def test_wait_queue_item(mock_url, session):
     def set_finished():
         time.sleep(0.5)
         resp = {'executable': {'url': 'some url'}}
@@ -543,11 +532,11 @@ def test_wait_queue_item(mock_url):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    wait_queue_item(g_url, g_auth, 0.2)
+    session.wait_queue_item(g_url, 0.2)
     assert time.time() - t0 >= 0.5
 
 
-def test_wait_queue_item_cancelled(mock_url):
+def test_wait_queue_item_cancelled(mock_url, session):
     def set_finished():
         time.sleep(0.5)
         resp = {'cancelled': True}
@@ -559,7 +548,7 @@ def test_wait_queue_item_cancelled(mock_url):
 
     t0 = time.time()
     with pytest.raises(RuntimeError):
-        wait_queue_item(g_url, g_auth, 0.2)
+        session.wait_queue_item(g_url, 0.2)
     assert time.time() - t0 >= 0.5
 
 
@@ -572,11 +561,11 @@ def test_wait_queue_item_cancelled(mock_url):
         ('IN_PROGRESS', None),
     ],
 )
-def test_get_job_status(mock_url, status, expect):
+def test_get_job_status(mock_url, status, expect, session):
     stage = {'name': 'stage', 'status': status}
     resp = {'name': 'name', 'status': status, 'stages': [stage]}
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
-    assert get_job_status(g_url, g_auth) == (expect, stage)
+    assert session.get_job_status(g_url) == (expect, stage)
 
 
 @pytest.mark.parametrize('duration, status, stage', [
@@ -584,7 +573,9 @@ def test_get_job_status(mock_url, status, expect):
     (0, None, {}),
     (10, False, {}),
 ])
-def test_get_job_status_not_executed(duration, status, stage, mock_url):
+def test_get_job_status_not_executed(
+    duration, status, stage, mock_url, session
+):
     """
     Test get_job_status when the status is NOT_EXECUTED.
 
@@ -596,10 +587,10 @@ def test_get_job_status_not_executed(duration, status, stage, mock_url):
         resp['durationMillis'] = duration
 
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
-    assert get_job_status(g_url, g_auth) == (status, stage)
+    assert session.get_job_status(g_url) == (status, stage)
 
 
-def test_get_job_status_in_progress(mock_url):
+def test_get_job_status_in_progress(mock_url, session):
     """
     Check that get_job_status returns the current running stage when the build
     is in progress.
@@ -613,10 +604,10 @@ def test_get_job_status_in_progress(mock_url):
     ]
     resp = {'name': 'name', 'status': 'IN_PROGRESS', 'stages': stages}
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
-    assert get_job_status(g_url, g_auth) == (None, current)
+    assert session.get_job_status(g_url) == (None, current)
 
 
-def test_get_job_status_false_negative(mock_url):
+def test_get_job_status_false_negative(mock_url, session):
     """
     Test that we read the correct response from the list of stages when Jenkins
     reports a false negative in the status header.
@@ -630,14 +621,14 @@ def test_get_job_status_false_negative(mock_url):
     ]
     resp = {'name': 'name', 'status': 'FAILED', 'stages': stages}
     mock_url(dict(url=g_url + '/wfapi/describe', text=json.dumps(resp)))
-    assert get_job_status(g_url, g_auth) == (True, last)
+    assert session.get_job_status(g_url) == (True, last)
 
 
 @pytest.mark.parametrize(
     'status, success',
     [('SUCCESS', True), ('FAILED', False), ('CANCELLED', False)],
 )
-def test_wait_for_job(mock_url, status, success):
+def test_wait_for_job(mock_url, status, success, session):
     """
     Check that wait_for_job returns True or False when a build reaches a final
     status.
@@ -662,11 +653,11 @@ def test_wait_for_job(mock_url, status, success):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    assert wait_for_job(g_url, g_auth, 0.2) == success
+    assert session.wait_for_job(g_url, 0.2) == success
     assert time.time() - t0 >= 0.5
 
 
-def test_wait_for_job_nonexistent(monkeypatch):
+def test_wait_for_job_nonexistent(monkeypatch, session):
     status_code = 400
     build_number = 65
     build_url = 'http://example.com/%s' % build_number
@@ -674,18 +665,18 @@ def test_wait_for_job_nonexistent(monkeypatch):
     def raise_httperror(*args, **kwargs):
         raise HTTPError(build_url, status_code, 'Mock http error', {}, None)
 
-    monkeypatch.setattr(launch_jenkins, 'get_url', raise_httperror)
+    monkeypatch.setattr(session, 'get_url', raise_httperror)
     with pytest.raises(HTTPError) as error:
-        wait_for_job(build_url, None)
+        session.wait_for_job(build_url)
         assert str(error.value) == 'Mock http error'
 
     status_code = 404
     with pytest.raises(HTTPError) as error:
-        wait_for_job(build_url, None)
+        session.wait_for_job(build_url)
         assert str(error.value) == 'Build #%s does not exist' % build_number
 
 
-def test_wait_for_job_get_duration(mock_url, capsys, tty):
+def test_wait_for_job_get_duration(mock_url, capsys, tty, session):
     """
     Return the list of stages and assert that wait_for_job can find the current
     one and extract its duration.
@@ -720,23 +711,23 @@ def test_wait_for_job_get_duration(mock_url, capsys, tty):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    assert wait_for_job(g_url, g_auth, 0.2)
+    assert session.wait_for_job(g_url, 0.2)
     assert time.time() - t0 >= 0.5
     assert_progressbar_millis(capsys, 'stage3', durationMillis)
 
 
-def test_retrieve_log(mock_url):
+def test_retrieve_log(mock_url, session):
     content = 'some log content here'
     mock_url(dict(url=g_url + '/consoleText', text=content))
-    assert retrieve_log(g_url, g_auth) == content
+    assert session.retrieve_log(g_url) == content
 
 
-def test_save_log_to_file(monkeypatch):
+def test_save_log_to_file(monkeypatch, session):
     content = 'some log content here'
-    monkeypatch.setattr(launch_jenkins, 'retrieve_log', lambda a, b: content)
+    monkeypatch.setattr(session, 'retrieve_log', lambda a: content)
     filename = 'thing_other_master.txt'
     try:
-        save_log_to_file(g_url, g_auth)
+        session.save_log_to_file(g_url)
         assert os.path.isfile(filename)
         assert open(filename).read() == content
     finally:
@@ -744,12 +735,12 @@ def test_save_log_to_file(monkeypatch):
             os.remove(filename)
 
 
-def test_save_binary_log_to_file(mock_url):
+def test_save_binary_log_to_file(mock_url, session):
     content = b'binary log \xe2\x80 here'
     filename = 'thing_other_master.txt'
     mock_url(dict(url=g_url + '/consoleText', text=content))
     try:
-        save_log_to_file(g_url, g_auth)
+        session.save_log_to_file(g_url)
         assert os.path.isfile(filename)
         assert open(filename).read() == 'binary log  here'
     finally:
@@ -757,12 +748,12 @@ def test_save_binary_log_to_file(mock_url):
             os.remove(filename)
 
 
-def test_dump_log_stdout(mock_url, monkeypatch, capsys):
+def test_dump_log_stdout(mock_url, monkeypatch, capsys, session):
     monkeypatch.setitem(launch_jenkins.CONFIG, 'dump', True)
 
     content = 'job output goes\n here'
     mock_url(dict(url=g_url + '/consoleText', text=content))
-    save_log_to_file(g_url, g_auth)
+    session.save_log_to_file(g_url)
     out = capsys.readouterr()
     assert out.out == content
     assert not out.err
