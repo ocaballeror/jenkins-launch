@@ -15,6 +15,8 @@ import re
 import base64
 import io
 import ssl
+import functools
+import warnings
 from itertools import cycle
 from collections import namedtuple
 from collections import OrderedDict
@@ -327,6 +329,37 @@ def show_progress(msg, duration, millis=None):
         elapsed += 0.1
 
 
+def deprecate(instead):
+    """
+    Issue a deprecation warning about this method and call another one instead.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            nonlocal instead
+            ismethod = len(args) > 0 and hasattr(args[0], func.__name__)
+            # if the decorated function is a method, try to find another
+            # method named "instead" in the same object
+            if ismethod and hasattr(args[0], instead):
+                instead = getattr(args[0], instead)
+            else:
+                instead = globals()[instead]
+            # if it's a method, remove self from the args list
+            if ismethod:
+                args = args[1:]
+            msg = (
+                '{} is deprecated and will be removed in the next major '
+                'version. Please use {} instead'
+            )
+            msg = msg.format(func.__name__, instead.__name__)
+            warnings.warn(msg, DeprecationWarning)
+            func.__doc__ = instead.__doc__
+            return instead(*args, **kwargs)
+
+        return wrapper
+    return decorator
+
+
 def stream_response(response):
     while True:
         response.text = response.read(8192)
@@ -507,7 +540,11 @@ class Session:
             return response['executable']['url']
         return None
 
-    def wait_queue_item(self, location, interval=5.0):
+    @deprecate(instead='wait_queue')
+    def wait_queue_item(self, *args, **kwargs):
+        pass
+
+    def wait_queue(self, location, interval=5.0):
         """
         Wait until the item starts building.
         """
@@ -519,7 +556,11 @@ class Session:
         log('')
         return job_url
 
-    def get_job_status(self, build_url):
+    @deprecate(instead='job_status')
+    def get_job_status(self, *args, **kwargs):
+        pass
+
+    def job_status(self, build_url):
         """
         Check the status of a running build.
 
@@ -562,7 +603,11 @@ class Session:
             )
             return status, last
 
-    def wait_for_job(self, build_url, interval=5.0):
+    @deprecate(instead='wait_job')
+    def wait_for_job(self, *args, **kwargs):
+        pass
+
+    def wait_job(self, build_url, interval=5.0):
         """
         Wait until the build finishes.
         """
@@ -595,7 +640,11 @@ class Session:
         )
         return log
 
-    def save_log_to_file(self, build_url):
+    @deprecate(instead='dump_log')
+    def save_log_to_file(self, *args, **kwargs):
+        pass
+
+    def dump_log(self, build_url):
         """
         Save the build log to a file.
         """
@@ -621,15 +670,30 @@ def launch_build(url, auth, *args, **kwargs):
     return Session(url, auth).launch_build(url, *args, **kwargs)
 
 
-def wait_queue_item(url, auth, *args, **kwargs):
+@deprecate(instead='wait_queue')
+def wait_queue_item(*args, **kwargs):
+    pass
+
+
+def wait_queue(url, auth, *args, **kwargs):
     return Session(url, auth).wait_queue_item(url, *args, **kwargs)
 
 
-def wait_for_job(url, auth, *args, **kwargs):
+@deprecate(instead='wait_job')
+def wait_for_job(*args, **kwargs):
+    pass
+
+
+def wait_job(url, auth, *args, **kwargs):
     return Session(url, auth).wait_for_job(url, *args, **kwargs)
 
 
-def save_log_to_file(url, auth, *args, **kwargs):
+@deprecate(instead='dump_log')
+def save_log_to_file(*args, **kwargs):
+    pass
+
+
+def dump_log(url, auth, *args, **kwargs):
     return Session(url, auth).save_log_to_file(url, *args, **kwargs)
 
 
