@@ -8,7 +8,7 @@ setup(
     author="Oscar Caballero",
     author_email="ocaballeror@tutanota.com",
     classifiers=[
-        'Development Status :: 2 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Build Tools',
         'Programming Language :: Python :: 2',
