@@ -131,7 +131,7 @@ def terminal_size(monkeypatch):
     def fake_terminal_size(*args, **kwargs):
         return Size(30, 30)
 
-    Size = namedtuple('terminal_size', 'columns rows')
+    Size = namedtuple('terminal_size', 'columns lines')
     has_func = hasattr(os, 'get_terminal_size')
     if not has_func:
         os.get_terminal_size = fake_terminal_size
