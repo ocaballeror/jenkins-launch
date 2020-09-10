@@ -385,7 +385,7 @@ def validate_params(definitions, supplied):
 
 
 class Session:
-    def __init__(self, base, auth):
+    def __init__(self, base, auth=None):
         self.auth = auth
         self.headers = {'User-Agent': 'foobar'}
         self.context = init_ssl()
