@@ -445,6 +445,8 @@ class Session:
             args = 'xpath=concat(//crumbRequestField,":",//crumb)'
             resp = self.get_url(self.base + '/crumbIssuer/api/xml?' + args)
         except HTTPError as err:
+            # only ignore the error if it's a 404 (i.e. Jenkins is not CSRF
+            # protected)
             if err.code != 404:
                 raise
         else:
