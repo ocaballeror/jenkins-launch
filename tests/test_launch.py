@@ -23,10 +23,15 @@ from launch_jenkins import parse_job_url
 from launch_jenkins import get_stderr_size_unix
 from launch_jenkins import is_progressbar_capable
 from launch_jenkins import init_ssl
+from launch_jenkins import Session
+from launch_jenkins import launch_build
+from launch_jenkins import wait_queue_item
+from launch_jenkins import wait_for_job
+from launch_jenkins import save_log_to_file
 from launch_jenkins import HTTPError
 
 from .conftest import FakeResponse
-from .conftest import g_url, g_auth_b64
+from .conftest import g_url, g_auth, g_auth_b64
 from .test_helper import assert_show_empty_progress
 from .test_helper import assert_show_no_progressbar
 from .test_helper import assert_show_progressbar
@@ -779,3 +784,24 @@ def test_no_progress_quiet(capsys, monkeypatch, terminal_size):
 
     monkeypatch.setitem(launch_jenkins.CONFIG, 'quiet', True)
     assert_show_empty_progress(capsys)
+
+
+@pytest.mark.parametrize('func', [
+    launch_build,
+    wait_queue_item,
+    wait_for_job,
+    save_log_to_file,
+])
+def test_func_nosession(func, monkeypatch):
+    """
+    Test the general backwards-compatible functions in the launch Jenkins
+    module that do not require a session to be launched, and create their own
+    silently.
+    """
+    def assert_session(session, url, *args, **kwargs):
+        assert session.auth == g_auth
+        assert url == g_url
+
+    monkeypatch.setattr(Session, '_get_crumb', lambda self: None)
+    monkeypatch.setattr(Session, func.__name__, assert_session)
+    func(g_url, g_auth)
