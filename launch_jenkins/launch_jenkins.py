@@ -258,12 +258,12 @@ def get_stderr_size_unix():
     if hasattr(os, 'get_terminal_size'):
         return os.get_terminal_size(2)
 
-    Size = namedtuple('Size', 'rows columns')
+    Size = namedtuple('Size', 'lines columns')
     output = os.popen('stty size -F /dev/stderr', 'r').read().split()
     if len(output) != 2:
         raise OSError(' '.join(output))
-    rows, columns = output
-    return Size(rows=int(rows), columns=int(columns))
+    lines, columns = output
+    return Size(lines=int(lines), columns=int(columns))
 
 
 def is_progressbar_capable():

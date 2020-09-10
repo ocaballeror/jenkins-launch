@@ -764,7 +764,7 @@ def test_get_stderr_size_os(terminal_size):
     Test get stderr size when the os module has the get_terminal_size method.
     """
     size = get_stderr_size_unix()
-    assert size.rows == 30
+    assert size.lines == 30
     assert size.columns == 30
 
 
@@ -782,7 +782,7 @@ def test_get_stderr_size_popen(monkeypatch):
         monkeypatch.delattr(os, 'get_terminal_size')
     monkeypatch.setattr(os, 'popen', fake_popen)
     size = get_stderr_size_unix()
-    assert size.rows == 30
+    assert size.lines == 30
     assert size.columns == 30
 
 
@@ -799,7 +799,7 @@ def test_get_stderr_size_stty(monkeypatch):
     except OSError as error:
         pytest.skip(str(error))
     stty = os.popen('stty size -F /dev/stderr', 'r').read().split()
-    assert size.rows == stty[0]
+    assert size.lines == stty[0]
     assert size.columns == stty[1]
 
 
