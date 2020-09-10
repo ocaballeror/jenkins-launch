@@ -39,38 +39,38 @@ def launch_build(monkeypatch, session):
 
 
 @pytest.fixture
-def wait_queue_item(monkeypatch, session):
+def wait_queue(monkeypatch, session):
     def mock(location):
-        call_log.append(('wait_queue_item', [location]))
+        call_log.append(('wait_queue', [location]))
         return build_url
 
-    monkeypatch.setattr(session, 'wait_queue_item', mock)
+    monkeypatch.setattr(session, 'wait_queue', mock)
 
 
 @pytest.fixture
-def wait_for_job(monkeypatch, session):
+def wait_job(monkeypatch, session):
     def mock(build_url):
-        call_log.append(('wait_for_job', [build_url]))
+        call_log.append(('wait_job', [build_url]))
         return True
 
-    monkeypatch.setattr(session, 'wait_for_job', mock)
+    monkeypatch.setattr(session, 'wait_job', mock)
 
 
 @pytest.fixture
-def wait_for_job_fail(monkeypatch, session):
+def wait_job_fail(monkeypatch, session):
     def mock(build_url):
-        call_log.append(('wait_for_job', [build_url]))
+        call_log.append(('wait_job', [build_url]))
         return False
 
-    monkeypatch.setattr(session, 'wait_for_job', mock)
+    monkeypatch.setattr(session, 'wait_job', mock)
 
 
 @pytest.fixture
-def save_log_to_file(monkeypatch, session):
+def dump_log(monkeypatch, session):
     def mock(build_url):
-        call_log.append(('save_log_to_file', [build_url]))
+        call_log.append(('dump_log', [build_url]))
 
-    monkeypatch.setattr(session, 'save_log_to_file', mock)
+    monkeypatch.setattr(session, 'dump_log', mock)
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ def quiet(monkeypatch):
 
 
 @pytest.mark.usefixtures(
-    'parse_args', 'launch_build', 'wait_queue_item', 'launch_only', 'quiet',
+    'parse_args', 'launch_build', 'wait_queue', 'launch_only', 'quiet',
 )
 def test_launch_only(capsys):
     del call_log[:]
@@ -97,7 +97,7 @@ def test_launch_only(capsys):
     launch_jenkins.main()
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('launch_build', [build_url, params])
-    assert call_log[2] == ('wait_queue_item', [queue_item])
+    assert call_log[2] == ('wait_queue', [queue_item])
 
     # even if it was launched with -q, it should output the build url to stdout
     captured = capsys.readouterr()
@@ -106,25 +106,25 @@ def test_launch_only(capsys):
 
 
 @pytest.mark.usefixtures(
-    'parse_args', 'wait_for_job', 'save_log_to_file', 'wait_only'
+    'parse_args', 'wait_job', 'dump_log', 'wait_only'
 )
 def test_wait_only():
     del call_log[:]
 
     assert launch_jenkins.main() == 0
     assert call_log[0] == ('parse_args', [])
-    assert call_log[1] == ('wait_for_job', [build_url])
-    assert call_log[2] == ('save_log_to_file', [build_url])
+    assert call_log[1] == ('wait_job', [build_url])
+    assert call_log[2] == ('dump_log', [build_url])
 
 
 @pytest.mark.usefixtures(
-    'parse_args', 'wait_for_job_fail', 'save_log_to_file', 'wait_only'
+    'parse_args', 'wait_job_fail', 'dump_log', 'wait_only'
 )
 def test_wait_main_fail():
     assert launch_jenkins.main() == 1
 
 
-@pytest.mark.usefixtures('wait_for_job', 'save_log_to_file')
+@pytest.mark.usefixtures('wait_job', 'dump_log')
 def test_wait_main_invalid_url(monkeypatch):
     """
     Check that main() raises an error when specifying wait-only and passing a
@@ -145,9 +145,9 @@ def test_wait_main_invalid_url(monkeypatch):
 @pytest.mark.usefixtures(
     'parse_args',
     'launch_build',
-    'wait_queue_item',
-    'wait_for_job',
-    'save_log_to_file',
+    'wait_queue',
+    'wait_job',
+    'dump_log',
 )
 def test_launch_jenkins_main(monkeypatch):
     del call_log[:]
@@ -157,17 +157,17 @@ def test_launch_jenkins_main(monkeypatch):
 
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('launch_build', [build_url, params])
-    assert call_log[2] == ('wait_queue_item', [queue_item])
-    assert call_log[3] == ('wait_for_job', [build_url])
-    assert call_log[4] == ('save_log_to_file', [build_url])
+    assert call_log[2] == ('wait_queue', [queue_item])
+    assert call_log[3] == ('wait_job', [build_url])
+    assert call_log[4] == ('dump_log', [build_url])
 
 
 @pytest.mark.usefixtures(
     'parse_args',
     'launch_build',
-    'wait_queue_item',
-    'wait_for_job_fail',
-    'save_log_to_file',
+    'wait_queue',
+    'wait_job_fail',
+    'dump_log',
 )
 def test_launch_jenkins_main_fail(monkeypatch):
     assert launch_jenkins.main() == 1

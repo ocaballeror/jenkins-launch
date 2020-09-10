@@ -614,7 +614,7 @@ class Session:
         name = '#' + build_url.rstrip('/').split('/')[-1]
         last_stage = None
         while True:
-            status, stage = self.get_job_status(build_url)
+            status, stage = self.job_status(build_url)
             if status is not None:
                 status_name = 'SUCCESS' if status else 'FAILURE'
                 log('\nJob', name, 'ended in', status_name)
@@ -707,14 +707,14 @@ def main():
 
     if CONFIG['mode'] != 'wait':
         location = session.launch_build(build_url, params)
-        build_url = session.wait_queue_item(location)
+        build_url = session.wait_queue(location)
 
     if CONFIG['mode'] == 'launch':
         print(build_url)
         return 0
 
-    result = session.wait_for_job(build_url)
-    session.save_log_to_file(build_url)
+    result = session.wait_job(build_url)
+    session.dump_log(build_url)
     return int(not result)
 
 
