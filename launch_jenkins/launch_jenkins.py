@@ -336,14 +336,14 @@ def deprecate(instead):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            nonlocal instead
+            other = instead
             ismethod = len(args) > 0 and hasattr(args[0], func.__name__)
             # if the decorated function is a method, try to find another
-            # method named "instead" in the same object
-            if ismethod and hasattr(args[0], instead):
-                instead = getattr(args[0], instead)
+            # method named "other" in the same object
+            if ismethod and hasattr(args[0], other):
+                other = getattr(args[0], other)
             else:
-                instead = globals()[instead]
+                other = globals()[other]
             # if it's a method, remove self from the args list
             if ismethod:
                 args = args[1:]
@@ -351,10 +351,10 @@ def deprecate(instead):
                 '{} is deprecated and will be removed in the next major '
                 'version. Please use {} instead'
             )
-            msg = msg.format(func.__name__, instead.__name__)
+            msg = msg.format(func.__name__, other.__name__)
             warnings.warn(msg, DeprecationWarning)
-            func.__doc__ = instead.__doc__
-            return instead(*args, **kwargs)
+            func.__doc__ = other.__doc__
+            return other(*args, **kwargs)
 
         return wrapper
     return decorator
