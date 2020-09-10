@@ -2,7 +2,7 @@ from setuptools import setup
 from launch_jenkins import __version__
 
 setup(
-    name="jenkins_launch",
+    name="launch_jenkins",
     description="Launch a jenkins job and wait for it to finish",
     version=__version__,
     author="Oscar Caballero",
