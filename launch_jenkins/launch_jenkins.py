@@ -646,12 +646,14 @@ class Session:
     def save_log_to_file(self, *args, **kwargs):
         pass
 
-    def dump_log(self, build_url):
+    def dump_log(self, build_url, file=None):
         """
         Save the build log to a file.
         """
         build_url = build_url.rstrip('/') + '/'
-        if CONFIG['dump']:
+        if file:
+            pass
+        elif CONFIG['dump']:
             file = sys.stdout
         else:
             job_name = build_url[build_url.find('/job/') :]
@@ -661,9 +663,12 @@ class Session:
             log_file = job_name + '.txt'
             file = io.open(log_file, 'w', encoding='utf-8')
 
+        isfile = hasattr(file, 'write')
+        if not isfile:
+            file = io.open(log_file, 'w', encoding='utf-8')
         file.write(self.retrieve_log(build_url))
 
-        if not CONFIG['dump']:
+        if not isfile:
             file.close()
             log('Job output saved to', log_file)
 

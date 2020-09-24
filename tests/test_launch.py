@@ -615,17 +615,32 @@ def test_retrieve_log(mock_url, session):
     assert session.retrieve_log(g_url) == content
 
 
-def test_dump_log(monkeypatch, session):
+def test_dump_log(monkeypatch, session, filename, dest):
+    def assert_dump(filename, given=None):
+        try:
+            session.dump_log(g_url, filename=given)
+            assert os.path.isfile(filename)
+            assert open(filename).read() == content
+        finally:
+            if os.path.isfile(filename):
+                os.remove(filename)
+
     content = 'some log content here'
     monkeypatch.setattr(session, 'retrieve_log', lambda a: content)
     filename = 'thing_other_master.txt'
-    try:
-        session.dump_log(g_url)
-        assert os.path.isfile(filename)
-        assert open(filename).read() == content
-    finally:
-        if os.path.isfile(filename):
-            os.remove(filename)
+    assert_dump(filename, given=None)
+
+    # passing a filename explicitly should override the default name
+    assert_dump(filename * 2, given=filename * 2)
+
+
+def test_dump_log_stdout(mock_url, monkeypatch, capsys, session):
+    content = 'job output goes\n here'
+    mock_url(dict(url=g_url + '/consoleText', text=content))
+    session.dump_log(g_url, sys.stdout)
+    out = capsys.readouterr()
+    assert out.out == content
+    assert not out.err
 
 
 def test_dump_binary_log(mock_url, session):
@@ -639,17 +654,6 @@ def test_dump_binary_log(mock_url, session):
     finally:
         if os.path.isfile(filename):
             os.remove(filename)
-
-
-def test_dump_log_stdout(mock_url, monkeypatch, capsys, session):
-    monkeypatch.setitem(launch_jenkins.CONFIG, 'dump', True)
-
-    content = 'job output goes\n here'
-    mock_url(dict(url=g_url + '/consoleText', text=content))
-    session.dump_log(g_url)
-    out = capsys.readouterr()
-    assert out.out == content
-    assert not out.err
 
 
 def test_get_stderr_size_os(terminal_size):
