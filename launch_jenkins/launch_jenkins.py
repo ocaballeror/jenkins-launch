@@ -730,7 +730,8 @@ def main():
         return 0
 
     result = session.wait_job(build_url)
-    session.dump_log(build_url)
+    if CONFIG['output']:
+        session.dump_log(build_url)
     return int(not result)
 
 

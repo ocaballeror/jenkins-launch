@@ -105,26 +105,21 @@ def test_launch_only(capsys):
     assert captured.out.strip() == build_url
 
 
-@pytest.mark.usefixtures(
-    'parse_args', 'wait_job', 'dump_log', 'wait_only'
-)
+@pytest.mark.usefixtures('parse_args', 'wait_job', 'wait_only')
 def test_wait_only():
     del call_log[:]
 
     assert launch_jenkins.main() == 0
     assert call_log[0] == ('parse_args', [])
     assert call_log[1] == ('wait_job', [build_url])
-    assert call_log[2] == ('dump_log', [build_url])
 
 
-@pytest.mark.usefixtures(
-    'parse_args', 'wait_job_fail', 'dump_log', 'wait_only'
-)
+@pytest.mark.usefixtures('parse_args', 'wait_job_fail', 'wait_only')
 def test_wait_main_fail():
     assert launch_jenkins.main() == 1
 
 
-@pytest.mark.usefixtures('wait_job', 'dump_log')
+@pytest.mark.usefixtures('wait_job')
 def test_wait_main_invalid_url(monkeypatch):
     """
     Check that main() raises an error when specifying wait-only and passing a
@@ -147,12 +142,31 @@ def test_wait_main_invalid_url(monkeypatch):
     'launch_build',
     'wait_queue',
     'wait_job',
-    'dump_log',
 )
 def test_launch_jenkins_main(monkeypatch):
     del call_log[:]
 
     monkeypatch.setitem(launch_jenkins.CONFIG, 'mode', 'full')
+    assert launch_jenkins.main() == 0
+
+    assert call_log[0] == ('parse_args', [])
+    assert call_log[1] == ('launch_build', [build_url, params])
+    assert call_log[2] == ('wait_queue', [queue_item])
+    assert call_log[3] == ('wait_job', [build_url])
+
+
+@pytest.mark.usefixtures(
+    'parse_args',
+    'launch_build',
+    'wait_queue',
+    'wait_job',
+    'dump_log'
+)
+def test_launch_jenkins_main_dumplog(monkeypatch):
+    del call_log[:]
+
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'mode', 'full')
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'output', True)
     assert launch_jenkins.main() == 0
 
     assert call_log[0] == ('parse_args', [])
@@ -167,7 +181,6 @@ def test_launch_jenkins_main(monkeypatch):
     'launch_build',
     'wait_queue',
     'wait_job_fail',
-    'dump_log',
 )
 def test_launch_jenkins_main_fail(monkeypatch):
     assert launch_jenkins.main() == 1
