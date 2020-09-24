@@ -15,6 +15,7 @@ build_url = job_url + '/1/'
 
 @pytest.fixture
 def session(monkeypatch):
+    monkeypatch.setattr(launch_jenkins.Session, '_get_crumb', lambda *a: None)
     session = launch_jenkins.Session(job_url, g_auth)
     monkeypatch.setattr(launch_jenkins, 'Session', lambda a, b: session)
     return session
