@@ -39,7 +39,7 @@ else:
 
 
 CONFIG = {
-    'dump': False,
+    'output': False,
     'quiet': False,
     'progress': False,
     'mode': 'full',
@@ -172,7 +172,13 @@ def parse_args():
         required=True,
     )
     parser.add_argument(
-        '--dump', help='Print job output to stdout', action='store_true'
+        '--dump',
+        help='[DEPRECATED: Use `-o` instead] Print job output to stdout',
+        action='store_true',
+    )
+    parser.add_argument(
+        '-o', '--output', help='Dump job output to FILE (use - for stdout)',
+        nargs='?', const=True, required=False, metavar='FILE'
     )
     parser.add_argument(
         '--debug', help='Print debug output', action='store_true'
@@ -209,7 +215,11 @@ def parse_args():
     )
     args = parser.parse_args()
 
-    CONFIG['dump'] = args.dump
+    if args.dump or args.output == '-':
+        CONFIG['output'] = sys.stdout
+    elif args.output:
+        CONFIG['output'] = args.output
+
     CONFIG['quiet'] = args.quiet
     CONFIG['progress'] = args.progress
     CONFIG['debug'] = args.debug
@@ -646,31 +656,30 @@ class Session:
     def save_log_to_file(self, *args, **kwargs):
         pass
 
-    def dump_log(self, build_url, file=None):
+    def dump_log(self, build_url, filename=None):
         """
         Save the build log to a file.
         """
         build_url = build_url.rstrip('/') + '/'
-        if file:
-            pass
-        elif CONFIG['dump']:
-            file = sys.stdout
+        if filename:
+            file = filename
+        elif CONFIG['output'] and CONFIG['output'] is not True:
+            file = CONFIG['output']
         else:
             job_name = build_url[build_url.find('/job/') :]
             job_name = (
                 job_name.replace('/', '_').replace('_job_', '_').strip('_')
             )
-            log_file = job_name + '.txt'
-            file = io.open(log_file, 'w', encoding='utf-8')
+            file = job_name + '.txt'
 
         isfile = hasattr(file, 'write')
         if not isfile:
-            file = io.open(log_file, 'w', encoding='utf-8')
+            file = io.open(file, 'w', encoding='utf-8')
         file.write(self.retrieve_log(build_url))
 
         if not isfile:
             file.close()
-            log('Job output saved to', log_file)
+            log('Job output saved to', file)
 
 
 def launch_build(url, auth, *args, **kwargs):

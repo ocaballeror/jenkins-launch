@@ -96,9 +96,41 @@ def test_optional_flags(monkeypatch, config):
     new_argv = ['python'] + g_params + params
     monkeypatch.setattr(sys, 'argv', new_argv)
     parse_args()
-    assert launch_jenkins.CONFIG['dump']
+    assert launch_jenkins.CONFIG['output']
     assert launch_jenkins.CONFIG['quiet']
     assert launch_jenkins.CONFIG['progress']
+
+
+def test_dump_flag(monkeypatch, config):
+    """
+    Test that --dump sets `sys.stdout` as the job output file.
+    """
+    params = ['--dump']
+    new_argv = ['python'] + g_params + params
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    parse_args()
+    assert launch_jenkins.CONFIG['output'] is sys.stdout
+
+
+def test_output_flag(monkeypatch, config):
+    """
+    Test that --output can take an argument and set it as the job output file.
+    """
+    params = ['--output', '/tmp/output']
+    new_argv = ['python'] + g_params + params
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    parse_args()
+    assert launch_jenkins.CONFIG['output'] == '/tmp/output'
+
+    new_argv[-1] = '-'
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    parse_args()
+    assert launch_jenkins.CONFIG['output'] is sys.stdout
+
+    del new_argv[-1]
+    monkeypatch.setattr(sys, 'argv', new_argv)
+    parse_args()
+    assert launch_jenkins.CONFIG['output'] is True
 
 
 @pytest.mark.parametrize(

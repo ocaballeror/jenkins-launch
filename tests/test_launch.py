@@ -615,7 +615,7 @@ def test_retrieve_log(mock_url, session):
     assert session.retrieve_log(g_url) == content
 
 
-def test_dump_log(monkeypatch, session, filename, dest):
+def test_dump_log(monkeypatch, session):
     def assert_dump(filename, given=None):
         try:
             session.dump_log(g_url, filename=given)
@@ -630,8 +630,16 @@ def test_dump_log(monkeypatch, session, filename, dest):
     filename = 'thing_other_master.txt'
     assert_dump(filename, given=None)
 
-    # passing a filename explicitly should override the default name
-    assert_dump(filename * 2, given=filename * 2)
+    # When CONFIG['output'] we want to dump to the default file name
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'output', True)
+    assert_dump(filename, given=None)
+
+    # CONFIG['output'] should override the default file name
+    monkeypatch.setitem(launch_jenkins.CONFIG, 'output', filename * 2)
+    assert_dump(filename * 2, given=None)
+
+    # passing a filename explicitly should override what's in CONFIG
+    assert_dump(filename * 3, given=filename * 3)
 
 
 def test_dump_log_stdout(mock_url, monkeypatch, capsys, session):
