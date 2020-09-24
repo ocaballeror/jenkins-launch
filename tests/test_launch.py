@@ -25,9 +25,9 @@ from launch_jenkins import is_progressbar_capable
 from launch_jenkins import init_ssl
 from launch_jenkins import Session
 from launch_jenkins import launch_build
-from launch_jenkins import wait_queue_item
-from launch_jenkins import wait_for_job
-from launch_jenkins import save_log_to_file
+from launch_jenkins import wait_queue
+from launch_jenkins import wait_job
+from launch_jenkins import dump_log
 from launch_jenkins import HTTPError
 
 from .conftest import FakeResponse
@@ -414,7 +414,7 @@ def test_launch_error_no_queue(mock_url, unparametrized, session):
         session.launch_build(g_url, {})
 
 
-def test_wait_queue_item(mock_url, session):
+def test_wait_queue(mock_url, session):
     def set_finished():
         time.sleep(0.5)
         resp = {'executable': {'url': 'some url'}}
@@ -425,11 +425,11 @@ def test_wait_queue_item(mock_url, session):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    session.wait_queue_item(g_url, 0.2)
+    session.wait_queue(g_url, 0.2)
     assert time.time() - t0 >= 0.5
 
 
-def test_wait_queue_item_cancelled(mock_url, session):
+def test_wait_queue_cancelled(mock_url, session):
     def set_finished():
         time.sleep(0.5)
         resp = {'cancelled': True}
@@ -441,7 +441,7 @@ def test_wait_queue_item_cancelled(mock_url, session):
 
     t0 = time.time()
     with pytest.raises(RuntimeError):
-        session.wait_queue_item(g_url, 0.2)
+        session.wait_queue(g_url, 0.2)
     assert time.time() - t0 >= 0.5
 
 
@@ -521,9 +521,9 @@ def test_get_job_status_false_negative(mock_url, session):
     'status, success',
     [('SUCCESS', True), ('FAILED', False), ('CANCELLED', False)],
 )
-def test_wait_for_job(mock_url, status, success, session):
+def test_wait_job(mock_url, status, success, session):
     """
-    Check that wait_for_job returns True or False when a build reaches a final
+    Check that wait_job returns True or False when a build reaches a final
     status.
     """
 
@@ -546,11 +546,11 @@ def test_wait_for_job(mock_url, status, success, session):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    assert session.wait_for_job(g_url, 0.2) == success
+    assert session.wait_job(g_url, 0.2) == success
     assert time.time() - t0 >= 0.5
 
 
-def test_wait_for_job_nonexistent(monkeypatch, session):
+def test_wait_job_nonexistent(monkeypatch, session):
     status_code = 400
     build_number = 65
     build_url = 'http://example.com/%s' % build_number
@@ -560,19 +560,19 @@ def test_wait_for_job_nonexistent(monkeypatch, session):
 
     monkeypatch.setattr(session, 'get_url', raise_httperror)
     with pytest.raises(HTTPError) as error:
-        session.wait_for_job(build_url)
+        session.wait_job(build_url)
         assert str(error.value) == 'Mock http error'
 
     status_code = 404
     with pytest.raises(HTTPError) as error:
-        session.wait_for_job(build_url)
+        session.wait_job(build_url)
         assert str(error.value) == 'Build #%s does not exist' % build_number
 
 
-def test_wait_for_job_get_duration(mock_url, capsys, tty, session):
+def test_wait_job_get_duration(mock_url, capsys, tty, session):
     """
-    Return the list of stages and assert that wait_for_job can find the current
-    one and extract its duration.
+    Return the list of stages and assert that wait_job can find the current one
+    and extract its duration.
     """
 
     def set_finished():
@@ -604,7 +604,7 @@ def test_wait_for_job_get_duration(mock_url, capsys, tty, session):
     Thread(target=set_finished).start()
 
     t0 = time.time()
-    assert session.wait_for_job(g_url, 0.2)
+    assert session.wait_job(g_url, 0.2)
     assert time.time() - t0 >= 0.5
     assert_progressbar_millis(capsys, 'stage3', durationMillis)
 
@@ -615,12 +615,12 @@ def test_retrieve_log(mock_url, session):
     assert session.retrieve_log(g_url) == content
 
 
-def test_save_log_to_file(monkeypatch, session):
+def test_dump_log(monkeypatch, session):
     content = 'some log content here'
     monkeypatch.setattr(session, 'retrieve_log', lambda a: content)
     filename = 'thing_other_master.txt'
     try:
-        session.save_log_to_file(g_url)
+        session.dump_log(g_url)
         assert os.path.isfile(filename)
         assert open(filename).read() == content
     finally:
@@ -628,12 +628,12 @@ def test_save_log_to_file(monkeypatch, session):
             os.remove(filename)
 
 
-def test_save_binary_log_to_file(mock_url, session):
+def test_dump_binary_log(mock_url, session):
     content = b'binary log \xe2\x80 here'
     filename = 'thing_other_master.txt'
     mock_url(dict(url=g_url + '/consoleText', text=content))
     try:
-        session.save_log_to_file(g_url)
+        session.dump_log(g_url)
         assert os.path.isfile(filename)
         assert open(filename).read() == 'binary log  here'
     finally:
@@ -646,7 +646,7 @@ def test_dump_log_stdout(mock_url, monkeypatch, capsys, session):
 
     content = 'job output goes\n here'
     mock_url(dict(url=g_url + '/consoleText', text=content))
-    session.save_log_to_file(g_url)
+    session.dump_log(g_url)
     out = capsys.readouterr()
     assert out.out == content
     assert not out.err
@@ -788,9 +788,9 @@ def test_no_progress_quiet(capsys, monkeypatch, terminal_size):
 
 @pytest.mark.parametrize('func', [
     launch_build,
-    wait_queue_item,
-    wait_for_job,
-    save_log_to_file,
+    wait_queue,
+    wait_job,
+    dump_log,
 ])
 def test_func_nosession(func, monkeypatch):
     """
