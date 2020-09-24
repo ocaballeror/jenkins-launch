@@ -805,3 +805,27 @@ def test_func_nosession(func, monkeypatch):
     monkeypatch.setattr(Session, '_get_crumb', lambda self: None)
     monkeypatch.setattr(Session, func.__name__, assert_session)
     func(g_url, g_auth)
+
+
+@pytest.mark.parametrize('func, instead', [
+    ('wait_queue_item', 'wait_queue'),
+    ('wait_for_job', 'wait_job'),
+    ('save_log_to_file', 'dump_log'),
+])
+def test_deprecate(func, instead, monkeypatch, session):
+    def mock(*args, **kwargs):
+        assert True
+
+    monkeypatch.setattr(launch_jenkins, instead, mock)
+    with pytest.warns(
+        DeprecationWarning,
+        match='%s is deprecated.* use mock instead' % func
+    ):
+        getattr(launch_jenkins, func)()
+
+    monkeypatch.setattr(session, instead, mock)
+    with pytest.warns(
+        DeprecationWarning,
+        match='%s is deprecated.* use mock instead' % func
+    ):
+        getattr(session, func)()
